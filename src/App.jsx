@@ -11,23 +11,17 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-24 font-sans selection:bg-blue-200">
       {/* Header */}
-      <header className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500 text-white rounded-b-[2.5rem] shadow-xl pt-12 pb-8 px-6 sticky top-0 z-30 relative overflow-hidden">
+      <header className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500 rounded-b-3xl shadow-md pt-5 pb-4 px-4 sticky top-0 z-30 relative overflow-hidden">
         {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full blur-xl transform -translate-x-8 translate-y-8"></div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl transform translate-x-8 -translate-y-8"></div>
+        <div className="absolute bottom-0 left-0 w-20 h-20 bg-white opacity-10 rounded-full blur-xl transform -translate-x-6 translate-y-6"></div>
         
-        <div className="flex items-center gap-4 relative z-10">
+        <div className="flex justify-center items-center relative z-10">
           <img 
             src={logoSrc} 
             alt="Logo Mazeeda" 
-            className="w-14 h-14 rounded-full object-cover border-[3px] border-white/80 shadow-md bg-white"
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-contain shadow bg-white p-0.5 border border-white/80"
           />
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight drop-shadow-sm">
-              Mazeeda Tamrin
-            </h1>
-            <p className="text-blue-100 mt-1 text-sm font-medium tracking-wide">Sistem Input Nilai Santriwati</p>
-          </div>
         </div>
       </header>
 

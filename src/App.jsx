@@ -3,7 +3,7 @@ import { BookOpen, Search, Save, List, CheckCircle2, ChevronDown, User, Calendar
 import { supabase } from './lib/supabase';
 import InputTab from './components/InputTab';
 import RecapTab from './components/RecapTab';
-import logoSrc from './assets/logo.jpg';
+import logoSrc from './assets/logo.png';
 
 function App() {
   const [activeTab, setActiveTab] = useState('input');
@@ -15,11 +15,11 @@ function App() {
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl transform translate-x-8 -translate-y-8"></div>
         <div className="absolute bottom-0 left-0 w-20 h-20 bg-white opacity-10 rounded-full blur-xl transform -translate-x-6 translate-y-6"></div>
-        
+
         <div className="flex justify-center items-center relative z-10">
-          <img 
-            src={logoSrc} 
-            alt="Logo Mazeeda" 
+          <img
+            src={logoSrc}
+            alt="Logo Mazeeda"
             className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-contain shadow bg-white p-0.5 border border-white/80"
           />
         </div>
@@ -35,18 +35,16 @@ function App() {
         <div className="max-w-lg mx-auto flex justify-around px-3 py-2">
           <button
             onClick={() => setActiveTab('input')}
-            className={`flex-1 flex flex-col items-center justify-center py-2 rounded-2xl transition-all duration-300 ${
-              activeTab === 'input' ? 'text-blue-600 bg-blue-50 scale-105' : 'text-slate-400 hover:text-blue-500 hover:bg-slate-50'
-            }`}
+            className={`flex-1 flex flex-col items-center justify-center py-2 rounded-2xl transition-all duration-300 ${activeTab === 'input' ? 'text-blue-600 bg-blue-50 scale-105' : 'text-slate-400 hover:text-blue-500 hover:bg-slate-50'
+              }`}
           >
             <ClipboardCheck className={`w-6 h-6 mb-1 transition-transform ${activeTab === 'input' ? 'animate-bounce drop-shadow-md text-blue-600' : ''}`} />
             <span className="text-[11px] font-bold tracking-wide">Input</span>
           </button>
           <button
             onClick={() => setActiveTab('recap')}
-            className={`flex-1 flex flex-col items-center justify-center py-2 rounded-2xl transition-all duration-300 ${
-              activeTab === 'recap' ? 'text-blue-600 bg-blue-50 scale-105' : 'text-slate-400 hover:text-blue-500 hover:bg-slate-50'
-            }`}
+            className={`flex-1 flex flex-col items-center justify-center py-2 rounded-2xl transition-all duration-300 ${activeTab === 'recap' ? 'text-blue-600 bg-blue-50 scale-105' : 'text-slate-400 hover:text-blue-500 hover:bg-slate-50'
+              }`}
           >
             <List className={`w-6 h-6 mb-1 transition-transform ${activeTab === 'recap' ? 'drop-shadow-md text-blue-600' : ''}`} />
             <span className="text-[11px] font-bold tracking-wide">Rekapan</span>

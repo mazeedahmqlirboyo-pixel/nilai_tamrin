@@ -3,12 +3,12 @@
   "name": "TAMRIN",
   "icons": [
     {
-      "src": "logo.png",
+      "src": "logo.png?v=2",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logo.png",
+      "src": "logo.png?v=2",
       "type": "image/png",
       "sizes": "512x512"
     }

@@ -256,24 +256,23 @@ export default function InputTab() {
                   <button
                     key={item.nama_siswi}
                     onClick={() => setSelectedName(item.nama_siswi)}
-                    disabled={isComplete}
                     className={cn(
                       "w-full text-left px-4 py-3 text-sm rounded-xl transition-colors font-medium flex justify-between items-center",
                       isComplete 
-                        ? "bg-red-50 text-red-500 border border-red-100 cursor-not-allowed opacity-80" 
+                        ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 focus:bg-green-100" 
                         : "text-slate-700 hover:bg-white hover:text-blue-600 focus:bg-white"
                     )}
                   >
                     <div className="flex flex-col">
                       <span>{item.nama_siswi}</span>
                       {isComplete && (
-                        <span className="text-[10px] text-red-600 font-bold tracking-wide italic mt-0.5">Sudah Dinilai</span>
+                        <span className="text-[10px] text-green-600 font-bold tracking-wide italic mt-0.5">Sudah dinilai (Tap untuk update)</span>
                       )}
                     </div>
                     {item.bagian && (
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-0.5 rounded-md",
-                        isComplete ? "bg-red-100 text-red-600" : "bg-slate-200/70 text-slate-500"
+                        isComplete ? "bg-green-200 text-green-800" : "bg-slate-200/70 text-slate-500"
                       )}>
                         {item.bagian}
                       </span>

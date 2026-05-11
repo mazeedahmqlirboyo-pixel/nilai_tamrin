@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Search, Save, List, CheckCircle2, ChevronDown, User, CalendarDays, ClipboardCheck, Download } from 'lucide-react';
+import { BookOpen, Search, Save, List, CheckCircle2, ChevronDown, User, CalendarDays, ClipboardCheck } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import InputTab from './components/InputTab';
 import RecapTab from './components/RecapTab';
@@ -90,8 +90,8 @@ function App() {
         <div className="fixed bottom-[80px] left-0 right-0 z-50 px-4 pb-2 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-lg mx-auto">
           <div className="bg-blue-600 text-white rounded-2xl p-4 shadow-lg flex items-center justify-between border border-blue-500">
             <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-xl">
-                <Download className="w-6 h-6 text-white" />
+              <div className="bg-white p-1.5 rounded-xl">
+                <img src={logoSrc} alt="Logo" className="w-7 h-7 object-contain" />
               </div>
               <div>
                 <h3 className="font-semibold text-sm">Install Aplikasi</h3>

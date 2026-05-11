@@ -134,6 +134,7 @@ export default function InputTab() {
       setGradedSiswis(prev => Array.from(new Set([...prev, selectedName])));
       setNilai(null);
       setShowSuccessModal(true);
+      setTimeout(() => setShowSuccessModal(false), 1500);
     }
   };
 
@@ -367,13 +368,7 @@ export default function InputTab() {
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Berhasil!</h3>
-            <p className="text-sm text-slate-600 mb-6">Data nilai berhasil disimpan.</p>
-            <button 
-              onClick={() => setShowSuccessModal(false)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl transition-colors shadow-lg shadow-blue-600/30"
-            >
-              Lanjut
-            </button>
+            <p className="text-sm text-slate-600 mb-2">Data nilai berhasil disimpan.</p>
           </div>
         </div>
       )}

@@ -29,6 +29,8 @@ export default function InputTab() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   const [siswiList, setSiswiList] = useState([]);
   const [gradedSiswis, setGradedSiswis] = useState([]); // Daftar siswi yg sudah dinilai untuk mapel aktif
@@ -92,13 +94,22 @@ export default function InputTab() {
     return filtered;
   }, [searchQuery, selectedBagian, siswiList]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!periode || !selectedName || !mapel || nilai === null) {
       setNotification({ type: 'error', message: 'Lengkapi semua data sebelum menyimpan!' });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
 
+    if (gradedSiswis.includes(selectedName)) {
+      setShowConfirmModal(true);
+    } else {
+      executeSave();
+    }
+  };
+
+  const executeSave = async () => {
+    setShowConfirmModal(false);
     setIsSubmitting(true);
     setNotification(null);
 
@@ -118,16 +129,12 @@ export default function InputTab() {
     if (error) {
       console.error(error);
       setNotification({ type: 'error', message: `Gagal menyimpan: ${error.message}` });
+      setTimeout(() => setNotification(null), 4000);
     } else {
-      setNotification({ type: 'success', message: 'Berhasil! Data nilai tersimpan.' });
-      setGradedSiswis(prev => [...prev, selectedName]);
+      setGradedSiswis(prev => Array.from(new Set([...prev, selectedName])));
       setNilai(null);
-      // Removed setSelectedName('') so user can grade the same student for other subjects
+      setShowSuccessModal(true);
     }
-    
-    setTimeout(() => {
-      setNotification(null);
-    }, 4000);
   };
 
   return (
@@ -323,6 +330,54 @@ export default function InputTab() {
           )}
         </button>
       </div>
+
+      {/* Confirm Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col items-center text-center border border-slate-100">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-amber-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Update Nilai?</h3>
+            <p className="text-sm text-slate-600 mb-6">
+              Siswi <strong>{selectedName}</strong> sudah memiliki nilai untuk mapel <strong>{mapel}</strong>. Yakin ingin memperbarui nilainya?
+            </p>
+            <div className="flex gap-3 w-full">
+              <button 
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 rounded-2xl transition-colors"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={executeSave}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl transition-colors shadow-lg shadow-amber-500/30"
+              >
+                Yakin, Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col items-center text-center border border-slate-100">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-8 h-8 text-green-600" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Berhasil!</h3>
+            <p className="text-sm text-slate-600 mb-6">Data nilai berhasil disimpan.</p>
+            <button 
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl transition-colors shadow-lg shadow-blue-600/30"
+            >
+              Lanjut
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

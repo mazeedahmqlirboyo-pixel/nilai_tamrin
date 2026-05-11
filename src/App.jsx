@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BookOpen, Search, Save, List, CheckCircle2, ChevronDown, User, CalendarDays, ClipboardCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, Search, Save, List, CheckCircle2, ChevronDown, User, CalendarDays, ClipboardCheck, Download } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import InputTab from './components/InputTab';
 import RecapTab from './components/RecapTab';
@@ -7,6 +7,39 @@ import logoSrc from './assets/logo.png';
 
 function App() {
   const [activeTab, setActiveTab] = useState('input');
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+      // Update UI notify the user they can install the PWA
+      setShowInstallBanner(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    
+    // Show the install prompt
+    deferredPrompt.prompt();
+    
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    // We've used the prompt, and can't use it again, throw it away
+    setDeferredPrompt(null);
+    setShowInstallBanner(false);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-24 font-sans selection:bg-blue-200">
@@ -51,6 +84,37 @@ function App() {
           </button>
         </div>
       </nav>
+
+      {/* PWA Install Banner */}
+      {showInstallBanner && (
+        <div className="fixed bottom-[80px] left-0 right-0 z-50 px-4 pb-2 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-lg mx-auto">
+          <div className="bg-blue-600 text-white rounded-2xl p-4 shadow-lg flex items-center justify-between border border-blue-500">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-xl">
+                <Download className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Install Aplikasi</h3>
+                <p className="text-xs text-blue-100 mt-0.5">Pasang di layar utama</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowInstallBanner(false)}
+                className="px-3 py-1.5 text-xs font-medium text-blue-100 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                Nanti
+              </button>
+              <button 
+                onClick={handleInstallClick}
+                className="px-4 py-1.5 text-xs font-bold bg-white text-blue-600 hover:bg-blue-50 rounded-lg transition-colors shadow-sm"
+              >
+                Install
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

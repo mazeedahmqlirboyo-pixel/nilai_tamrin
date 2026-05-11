@@ -134,7 +134,7 @@ export default function InputTab() {
       setGradedSiswis(prev => Array.from(new Set([...prev, selectedName])));
       setNilai(null);
       setShowSuccessModal(true);
-      setTimeout(() => setShowSuccessModal(false), 1500);
+      setTimeout(() => setShowSuccessModal(false), 500);
     }
   };
 

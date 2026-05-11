@@ -122,7 +122,7 @@ export default function InputTab() {
       setNotification({ type: 'success', message: 'Berhasil! Data nilai tersimpan.' });
       setGradedSiswis(prev => [...prev, selectedName]);
       setNilai(null);
-      setSelectedName(''); // Unselect student so user can quickly pick next
+      // Removed setSelectedName('') so user can grade the same student for other subjects
     }
     
     setTimeout(() => {
@@ -162,7 +162,7 @@ export default function InputTab() {
             value={mapel} 
             onChange={(e) => {
               setMapel(e.target.value);
-              setSelectedName(''); // reset selected siswi when mapel changes
+              // Removed setSelectedName('') to keep the student selected
             }}
             className={cn(
               "w-full border rounded-2xl py-4 pl-12 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none transition-colors",
@@ -187,7 +187,12 @@ export default function InputTab() {
         
         {selectedName ? (
           <div className="flex items-center justify-between bg-blue-50 border border-blue-100 p-3 rounded-2xl">
-            <span className="font-medium text-blue-900">{selectedName}</span>
+            <div className="flex flex-col">
+              <span className="font-medium text-blue-900">{selectedName}</span>
+              {gradedSiswis.includes(selectedName) && (
+                <span className="text-[10px] text-blue-600 font-semibold italic mt-0.5">Nilai sudah ada (Simpan untuk update)</span>
+              )}
+            </div>
             <button 
               onClick={() => setSelectedName('')} 
               className="text-blue-500 text-sm font-semibold hover:text-blue-700 bg-white px-3 py-1 rounded-full shadow-sm transition-colors"

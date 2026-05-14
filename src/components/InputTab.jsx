@@ -459,17 +459,33 @@ export default function InputTab() {
             />
             <button 
               onClick={async () => {
-                if (periodePassword === 'cipuyganteng') {
+                // 1. Coba login ke Supabase menggunakan email khusus admin dan password yang diketik
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                  email: 'admin@mazeeda.com',
+                  password: periodePassword,
+                });
+
+                if (!signInError) {
+                  // Jika berhasil login (password benar di server)
                   const success = await updateGlobalPeriode(tempPeriode);
+                  
                   if (success) {
                     setShowPeriodeModal(false);
                     setPeriodePassword('');
                     setPeriodeError('');
                   } else {
-                    setPeriodeError('Gagal menghubungi server!');
+                    setPeriodeError('Gagal menyimpan ke database!');
                   }
+                  
+                  // Logout kembali agar aplikasi kembali ke mode publik
+                  await supabase.auth.signOut();
                 } else {
-                  setPeriodeError('Password salah!');
+                  // Jika gagal login (password salah / akun belum dibuat)
+                  if (signInError.message.includes('Invalid login credentials')) {
+                    setPeriodeError('Password salah!');
+                  } else {
+                    setPeriodeError('Akun admin belum disetting di Supabase!');
+                  }
                 }
               }}
               className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 transition"

@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Save, CheckCircle2, AlertCircle, Building, ChevronDown, BookOpen } from 'lucide-react';
+import { Search, Save, CheckCircle2, AlertCircle, Building, ChevronDown, BookOpen, X, CalendarDays } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
-
+import { useSiswi } from '../contexts/SiswiContext';
+import NilaiGrid from './NilaiGrid';
+import PremiumSelect from './PremiumSelect';
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
@@ -16,8 +18,6 @@ const MAPELS = [
 ];
 
 export default function InputTab() {
-  const [periode, setPeriode] = useState('Qobla Maulud'); // Default locked to Qobla Maulud
-  
   const [mapel, setMapel] = useState('');
   
   // States for name filtering
@@ -32,19 +32,16 @@ export default function InputTab() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
-  const [siswiList, setSiswiList] = useState([]);
+  const { siswiList, uniqueBagian, globalPeriode: periode, updateGlobalPeriode } = useSiswi();
   const [gradedSiswis, setGradedSiswis] = useState([]); // Daftar siswi yg sudah dinilai untuk mapel aktif
+  const [gradedMapelsForSiswi, setGradedMapelsForSiswi] = useState([]); // Daftar mapel yg sudah dinilai untuk siswi aktif
 
-  // Fetch semua siswi sekali saat awal
-  React.useEffect(() => {
-    async function loadSiswi() {
-      const { data, error } = await supabase.from('siswi').select('nama_siswi, bagian').order('nama_siswi');
-      if (!error && data) {
-        setSiswiList(data);
-      }
-    }
-    loadSiswi();
-  }, []);
+  // Periode Auth Modal States
+  const [showPeriodeSelector, setShowPeriodeSelector] = useState(false);
+  const [showPeriodeModal, setShowPeriodeModal] = useState(false);
+  const [tempPeriode, setTempPeriode] = useState('');
+  const [periodePassword, setPeriodePassword] = useState('');
+  const [periodeError, setPeriodeError] = useState('');
 
   // Fetch nama siswi yang sudah ada nilainya berdasarkan mapel & periode
   React.useEffect(() => {
@@ -66,16 +63,26 @@ export default function InputTab() {
     loadGradedSiswis();
   }, [mapel, periode]);
 
-  const uniqueBagian = useMemo(() => {
-    const bgns = new Set();
-    siswiList.forEach(s => {
-      if (s.bagian) bgns.add(s.bagian);
-    });
-    return Array.from(bgns).sort();
-  }, [siswiList]);
+  // Fetch mapel yang sudah ada nilainya berdasarkan siswi & periode
+  React.useEffect(() => {
+    async function loadGradedMapels() {
+      if (!selectedName || !periode) {
+        setGradedMapelsForSiswi([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('nilai_tamrin')
+        .select('mata_pelajaran')
+        .eq('nama_siswi', selectedName)
+        .eq('periode', periode);
+        
+      if (!error && data) {
+        setGradedMapelsForSiswi(data.map(d => d.mata_pelajaran));
+      }
+    }
+    loadGradedMapels();
+  }, [selectedName, periode]);
 
-  // Generated grid array 0, 0.5, 1 ... 10
-  const NILAI_GRID = useMemo(() => Array.from({ length: 21 }, (_, i) => i * 0.5), []);
 
   const filteredNames = useMemo(() => {
     let filtered = siswiList;
@@ -132,6 +139,7 @@ export default function InputTab() {
       setTimeout(() => setNotification(null), 4000);
     } else {
       setGradedSiswis(prev => Array.from(new Set([...prev, selectedName])));
+      setGradedMapelsForSiswi(prev => Array.from(new Set([...prev, mapel])));
       setNilai(null);
       setShowSuccessModal(true);
       setTimeout(() => setShowSuccessModal(false), 500);
@@ -153,9 +161,22 @@ export default function InputTab() {
       )}
 
       {/* Periode Status */}
-      <div className="bg-blue-600 rounded-2xl py-3 px-4 shadow-sm border border-blue-500/50 flex justify-between items-center mb-4">
-        <span className="text-blue-100 text-sm font-semibold">Periode Aktif:</span>
-        <span className="text-white text-sm font-bold bg-blue-700/50 px-3 py-1 rounded-full">{periode}</span>
+      <div className="bg-gradient-to-r from-blue-700 to-blue-600 rounded-3xl p-5 shadow-[0_8px_20px_-6px_rgba(37,99,235,0.4)] border border-blue-400/30 flex justify-between items-center mb-5 relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
+        <div className="absolute bottom-0 left-0 w-20 h-20 bg-white opacity-5 rounded-full blur-xl transform -translate-x-5 translate-y-5"></div>
+        
+        <span className="text-blue-100 text-sm font-semibold z-10 flex items-center gap-2">
+          <CalendarDays className="w-5 h-5 text-blue-200" /> Periode Aktif
+        </span>
+        
+        <button 
+          onClick={() => setShowPeriodeSelector(true)}
+          className="relative z-10 flex items-center gap-2 bg-white/10 hover:bg-white/20 active:bg-white/30 transition-all duration-300 border border-white/20 rounded-2xl py-2 px-4 backdrop-blur-sm"
+        >
+          <span className="text-white text-sm font-bold tracking-wide">{periode || 'Memuat...'}</span>
+          <ChevronDown className="w-4 h-4 text-blue-200" />
+        </button>
       </div>
 
       {/* Mapel Card - MOVED UP */}
@@ -164,26 +185,18 @@ export default function InputTab() {
           <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
           Pilih Mata Pelajaran
         </label>
-        <div className="relative">
-          <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <select 
-            value={mapel} 
-            onChange={(e) => {
-              setMapel(e.target.value);
-              // Removed setSelectedName('') to keep the student selected
-            }}
-            className={cn(
-              "w-full border rounded-2xl py-4 pl-12 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none transition-colors",
-              mapel ? "bg-blue-50 border-blue-200 text-blue-800" : "bg-slate-50 border-slate-200 text-slate-700"
-            )}
-          >
-            <option value="" disabled>Pilih mapel terlebih dahulu...</option>
-            {MAPELS.map(m => (
-              <option key={m} value={m} className="text-slate-800">{m}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 pointer-events-none" />
-        </div>
+        <PremiumSelect
+          value={mapel}
+          onChange={setMapel}
+          options={MAPELS.map(m => ({
+            label: m,
+            value: m,
+            isDanger: gradedMapelsForSiswi.includes(m)
+          }))}
+          placeholder="Pilih mapel terlebih dahulu..."
+          title="Pilih Mata Pelajaran"
+          icon={BookOpen}
+        />
       </div>
 
       {/* Siswi Selection Card - MOVED DOWN */}
@@ -212,24 +225,19 @@ export default function InputTab() {
           <div className={cn("space-y-3 transition-opacity", !mapel && "opacity-50 pointer-events-none")} >
             
             {/* Bagian Filter */}
-            <div className="relative">
-              <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <select 
-                value={selectedBagian} 
-                onChange={(e) => {
-                  setSelectedBagian(e.target.value);
-                  setSearchQuery(''); // Reset pencarian teks jika ganti bagian
-                }}
-                className="w-full bg-blue-50 border border-blue-100 rounded-2xl p-3 pl-10 pr-10 text-sm font-medium text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none transition-colors"
-                disabled={uniqueBagian.length === 0 || !mapel}
-              >
-                <option value="">-- Semua Bagian --</option>
-                {uniqueBagian.map(b => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 pointer-events-none" />
-            </div>
+            <PremiumSelect
+              value={selectedBagian}
+              onChange={(val) => {
+                setSelectedBagian(val);
+                setSearchQuery('');
+              }}
+              options={[{ label: "-- Semua Bagian --", value: "" }, ...uniqueBagian]}
+              placeholder="-- Semua Bagian --"
+              title="Pilih Bagian"
+              icon={Building}
+              disabled={uniqueBagian.length === 0 || !mapel}
+              buttonClassName="py-3"
+            />
 
             {/* Nominal Search */}
             <div className="relative">
@@ -288,30 +296,7 @@ export default function InputTab() {
         )}
       </div>
 
-      {/* Nilai Grid Card */}
-      <div className="bg-white rounded-3xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-blue-50/50">
-        <label className="block text-sm font-semibold text-slate-700 mb-3 text-center flex items-center justify-center gap-2">
-          <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
-          Tap Nilai
-        </label>
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-          {NILAI_GRID.map(val => (
-            <button
-              key={val}
-              onClick={() => setNilai(val)}
-              disabled={!mapel || !selectedName}
-              className={cn(
-                "py-3 rounded-2xl text-sm font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:active:scale-100",
-                nilai === val
-                  ? "bg-blue-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.4)] scale-105 z-10"
-                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-              )}
-            >
-              {val}
-            </button>
-          ))}
-        </div>
-      </div>
+      <NilaiGrid nilai={nilai} setNilai={setNilai} disabled={!mapel || !selectedName} />
 
       {/* Action Area */}
       <div className="pt-2 pb-6">
@@ -360,6 +345,71 @@ export default function InputTab() {
         </div>
       )}
 
+      {/* Premium Periode Selector Modal */}
+      {showPeriodeSelector && (
+        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowPeriodeSelector(false)}>
+          <div 
+            className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 pb-safe shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 relative overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle bar for mobile */}
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 sm:hidden"></div>
+            
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="font-bold text-xl text-slate-800">Pilih Periode</h3>
+              <button 
+                onClick={() => setShowPeriodeSelector(false)} 
+                className="text-slate-400 hover:bg-slate-100 p-2 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {PERIODES.map(p => {
+                const isActive = p === periode;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => {
+                      if (!isActive) {
+                        setTempPeriode(p);
+                        setShowPeriodeSelector(false); // Close selector
+                        setTimeout(() => setShowPeriodeModal(true), 150); // Open password modal smoothly
+                      } else {
+                        setShowPeriodeSelector(false);
+                      }
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200",
+                      isActive 
+                        ? "border-blue-500 bg-blue-50/50 shadow-[0_4px_12px_rgba(59,130,246,0.15)]" 
+                        : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center shadow-sm",
+                        isActive ? "bg-blue-500 text-white" : "bg-white text-slate-400 border border-slate-200"
+                      )}>
+                        <CalendarDays className="w-5 h-5" />
+                      </div>
+                      <span className={cn(
+                        "font-bold text-base",
+                        isActive ? "text-blue-700" : "text-slate-600"
+                      )}>
+                        {p}
+                      </span>
+                    </div>
+                    {isActive && <CheckCircle2 className="w-6 h-6 text-blue-500 animate-in zoom-in duration-300" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -369,6 +419,63 @@ export default function InputTab() {
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Berhasil!</h3>
             <p className="text-sm text-slate-600 mb-2">Data nilai berhasil disimpan.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Periode Password Modal */}
+      {showPeriodeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg text-slate-800">Ganti Periode?</h3>
+              <button 
+                onClick={() => {
+                  setShowPeriodeModal(false);
+                  setPeriodePassword('');
+                  setPeriodeError('');
+                }} 
+                className="text-slate-400 hover:bg-slate-100 p-1 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">
+              Anda akan mengganti periode ke <strong>{tempPeriode}</strong>. Masukkan password admin untuk melanjutkan.
+            </p>
+            {periodeError && (
+              <div className="mb-4 bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>{periodeError}</span>
+              </div>
+            )}
+            <input 
+              type="password"
+              placeholder="Password..."
+              value={periodePassword}
+              onChange={(e) => setPeriodePassword(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-4"
+              autoFocus
+            />
+            <button 
+              onClick={async () => {
+                if (periodePassword === 'cipuyganteng') {
+                  const success = await updateGlobalPeriode(tempPeriode);
+                  if (success) {
+                    setShowPeriodeModal(false);
+                    setPeriodePassword('');
+                    setPeriodeError('');
+                  } else {
+                    setPeriodeError('Gagal menghubungi server!');
+                  }
+                } else {
+                  setPeriodeError('Password salah!');
+                }
+              }}
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 transition"
+            >
+              Konfirmasi Ganti
+            </button>
           </div>
         </div>
       )}

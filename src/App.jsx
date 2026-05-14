@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase';
 import InputTab from './components/InputTab';
 import RecapTab from './components/RecapTab';
 import logoSrc from './assets/logo.png';
+import { SiswiProvider } from './contexts/SiswiContext';
 
 function App() {
   const [activeTab, setActiveTab] = useState('input');
@@ -42,7 +43,8 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-24 font-sans selection:bg-blue-200">
+    <SiswiProvider>
+      <div className="min-h-screen bg-slate-50 text-slate-800 pb-24 font-sans selection:bg-blue-200">
       {/* Header */}
       <header className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500 rounded-b-3xl shadow-md pt-5 pb-4 px-4 sticky top-0 z-30 relative overflow-hidden">
         {/* Decorative elements */}
@@ -116,6 +118,7 @@ function App() {
         </div>
       )}
     </div>
+    </SiswiProvider>
   );
 }
 

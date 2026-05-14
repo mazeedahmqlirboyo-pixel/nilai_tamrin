@@ -36,6 +36,28 @@ export function SiswiProvider({ children }) {
 
   useEffect(() => {
     fetchSiswi();
+
+    const settingsSubscription = supabase
+      .channel('app-settings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'app_settings',
+          filter: 'id=eq.1',
+        },
+        (payload) => {
+          if (payload.new && payload.new.active_periode) {
+            setGlobalPeriode(payload.new.active_periode);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(settingsSubscription);
+    };
   }, []);
 
   const uniqueBagian = useMemo(() => {

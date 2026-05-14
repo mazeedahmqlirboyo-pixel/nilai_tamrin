@@ -349,14 +349,14 @@ export default function InputTab() {
       {showPeriodeSelector && (
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowPeriodeSelector(false)}>
           <div 
-            className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 pb-safe shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 relative overflow-hidden"
+            className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-5 pb-safe shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 relative overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Handle bar for mobile */}
-            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 sm:hidden"></div>
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden"></div>
             
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="font-bold text-xl text-slate-800">Pilih Periode</h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold text-lg text-slate-800">Pilih Periode</h3>
               <button 
                 onClick={() => setShowPeriodeSelector(false)} 
                 className="text-slate-400 hover:bg-slate-100 p-2 rounded-full transition-colors"
@@ -365,7 +365,7 @@ export default function InputTab() {
               </button>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               {PERIODES.map(p => {
                 const isActive = p === periode;
                 return (
@@ -381,27 +381,27 @@ export default function InputTab() {
                       }
                     }}
                     className={cn(
-                      "w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200",
+                      "w-full flex items-center justify-between px-4 py-2.5 rounded-2xl border-2 transition-all duration-200 text-left",
                       isActive 
-                        ? "border-blue-500 bg-blue-50/50 shadow-[0_4px_12px_rgba(59,130,246,0.15)]" 
+                        ? "border-blue-500 bg-blue-50/50 shadow-[0_2px_8px_rgba(59,130,246,0.1)]" 
                         : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
                     )}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center shadow-sm",
+                        "w-8 h-8 rounded-full flex items-center justify-center shadow-sm",
                         isActive ? "bg-blue-500 text-white" : "bg-white text-slate-400 border border-slate-200"
                       )}>
-                        <CalendarDays className="w-5 h-5" />
+                        <CalendarDays className="w-4 h-4" />
                       </div>
                       <span className={cn(
-                        "font-bold text-base",
+                        "font-bold text-sm",
                         isActive ? "text-blue-700" : "text-slate-600"
                       )}>
                         {p}
                       </span>
                     </div>
-                    {isActive && <CheckCircle2 className="w-6 h-6 text-blue-500 animate-in zoom-in duration-300" />}
+                    {isActive && <CheckCircle2 className="w-5 h-5 text-blue-500 animate-in zoom-in duration-300" />}
                   </button>
                 );
               })}

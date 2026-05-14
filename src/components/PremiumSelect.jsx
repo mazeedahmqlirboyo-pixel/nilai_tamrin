@@ -50,13 +50,13 @@ export default function PremiumSelect({
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsOpen(false)}>
           <div 
-            className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 pb-safe shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 relative overflow-hidden flex flex-col max-h-[85vh]"
+            className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-5 pb-safe shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 relative overflow-hidden flex flex-col max-h-[85vh]"
             onClick={e => e.stopPropagation()}
           >
-            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 flex-shrink-0 sm:hidden"></div>
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 flex-shrink-0 sm:hidden"></div>
             
-            <div className="flex justify-between items-center mb-5 flex-shrink-0">
-              <h3 className="font-bold text-xl text-slate-800">{title}</h3>
+            <div className="flex justify-between items-center mb-3 flex-shrink-0">
+              <h3 className="font-bold text-lg text-slate-800">{title}</h3>
               <button 
                 onClick={() => setIsOpen(false)} 
                 className="text-slate-400 hover:bg-slate-100 p-2 rounded-full transition-colors"
@@ -65,7 +65,7 @@ export default function PremiumSelect({
               </button>
             </div>
             
-            <div className="overflow-y-auto space-y-3 pr-2 custom-scrollbar flex-1 pb-4">
+            <div className="overflow-y-auto space-y-1.5 pr-1 custom-scrollbar flex-1 pb-4">
               {normalizedOptions.map(opt => {
                 const isActive = opt.value === value;
                 return (
@@ -76,30 +76,30 @@ export default function PremiumSelect({
                       setIsOpen(false);
                     }}
                     className={cn(
-                      "w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200 text-left",
+                      "w-full flex items-center justify-between px-4 py-2.5 rounded-2xl border-2 transition-all duration-200 text-left",
                       isActive 
-                        ? "border-blue-500 bg-blue-50/50 shadow-[0_4px_12px_rgba(59,130,246,0.15)]" 
+                        ? "border-blue-500 bg-blue-50/50 shadow-[0_2px_8px_rgba(59,130,246,0.1)]" 
                         : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
                     )}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       {Icon && (
                         <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center shadow-sm",
+                          "w-8 h-8 rounded-full flex items-center justify-center shadow-sm",
                           isActive ? "bg-blue-500 text-white" : "bg-white text-slate-400 border border-slate-200"
                         )}>
-                          <Icon className="w-5 h-5" />
+                          <Icon className="w-4 h-4" />
                         </div>
                       )}
                       <span className={cn(
-                        "font-bold text-base",
+                        "font-bold text-sm",
                         isActive ? activeColorClass : (opt.isDanger ? "text-red-500" : "text-slate-600")
                       )}>
                         {opt.label}
-                        {opt.isDanger && !isActive && <span className="text-[10px] font-bold tracking-wide bg-red-100 text-red-600 px-2 py-0.5 rounded-md ml-2 relative -top-0.5 italic">Sudah diisi</span>}
+                        {opt.isDanger && !isActive && <span className="text-[9px] font-bold tracking-wide bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md ml-2 relative -top-0.5 italic">Sudah diisi</span>}
                       </span>
                     </div>
-                    {isActive && <CheckCircle2 className="w-6 h-6 text-blue-500 animate-in zoom-in duration-300" />}
+                    {isActive && <CheckCircle2 className="w-5 h-5 text-blue-500 animate-in zoom-in duration-300" />}
                   </button>
                 );
               })}

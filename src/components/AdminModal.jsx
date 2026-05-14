@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { useSiswi } from '../contexts/SiswiContext';
 
 export default function AdminModal({ showAdminModal, closeAdminModal, fetchData, uniqueMapels }) {
-  const { siswiList, uniqueBagian, fetchSiswi } = useSiswi();
+  const { siswiList, uniqueBagian, fetchSiswi, globalPeriode } = useSiswi();
   
   const [adminPassword, setAdminPassword] = useState('');
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
@@ -15,6 +15,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
   // States for Delete Nilai Feature
   const [delTargetBagian, setDelTargetBagian] = useState('SEMUA');
   const [delTargetMapel, setDelTargetMapel] = useState('SEMUA');
+  const [delTargetPeriode, setDelTargetPeriode] = useState(globalPeriode || 'SEMUA');
 
   if (!showAdminModal) return null;
 
@@ -35,6 +36,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
     setAdminError('');
     setDelTargetBagian('SEMUA');
     setDelTargetMapel('SEMUA');
+    setDelTargetPeriode(globalPeriode || 'SEMUA');
   };
 
   const handleDeleteAllSiswi = async () => {
@@ -57,10 +59,11 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
   const handleDeleteNilai = async () => {
     const isSemuaBagian = delTargetBagian === 'SEMUA';
     const isSemuaMapel = delTargetMapel === 'SEMUA';
+    const isSemuaPeriode = delTargetPeriode === 'SEMUA';
     
-    let msg = `Yakin ingin menghapus riwayat Nilai Tamrin untuk:\nBagian: ${delTargetBagian}\nPelajaran: ${delTargetMapel}?`;
-    if(isSemuaBagian && isSemuaMapel) {
-      msg = `PERINGATAN KERAS!\n\nAnda akan menghapus SELURUH Riwayat Nilai Tamrin di database (Semua Bagian & Semua Pelajaran)!\n\nLanjutkan?`;
+    let msg = `Yakin ingin menghapus riwayat Nilai Tamrin untuk:\nPeriode: ${delTargetPeriode}\nBagian: ${delTargetBagian}\nPelajaran: ${delTargetMapel}?`;
+    if(isSemuaBagian && isSemuaMapel && isSemuaPeriode) {
+      msg = `PERINGATAN KERAS!\n\nAnda akan menghapus SELURUH Riwayat Nilai Tamrin di database (Semua Periode, Bagian, & Pelajaran)!\n\nLanjutkan?`;
     }
 
     if(!window.confirm(msg)) return;
@@ -78,6 +81,11 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
         query = query.neq('mata_pelajaran', 'xxINVALIDxx');
       }
 
+      // Filter Periode
+      if(!isSemuaPeriode) {
+        query = query.eq('periode', delTargetPeriode);
+      }
+
       // Filter Bagian
       if(!isSemuaBagian) {
         const targetNames = siswiList.filter(s => s.bagian === delTargetBagian).map(s => s.nama_siswi);
@@ -91,6 +99,8 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
           let subQ = supabase.from('nilai_tamrin').delete();
           if(!isSemuaMapel) subQ = subQ.eq('mata_pelajaran', delTargetMapel);
           else subQ = subQ.neq('mata_pelajaran', 'xxINVALIDxx');
+          
+          if(!isSemuaPeriode) subQ = subQ.eq('periode', delTargetPeriode);
           
           const res = await subQ.in('nama_siswi', chunk);
           if (res.error) throw new Error(res.error.message);
@@ -240,6 +250,18 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
               </h4>
               
               <div className="space-y-3">
+                <div>
+                  <select 
+                    value={delTargetPeriode} 
+                    onChange={e => setDelTargetPeriode(e.target.value)}
+                    className="w-full bg-white border border-red-200 rounded-xl p-2.5 text-xs font-medium text-slate-700 outline-none focus:border-red-400"
+                  >
+                    <option value="SEMUA">Semua Periode</option>
+                    <option value="Qobla Maulud">Qobla Maulud</option>
+                    <option value="Ba'da Maulud">Ba'da Maulud</option>
+                  </select>
+                </div>
+
                 <div>
                   <select 
                     value={delTargetBagian} 

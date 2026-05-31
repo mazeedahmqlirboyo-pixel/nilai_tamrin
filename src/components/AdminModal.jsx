@@ -19,14 +19,29 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
 
   if (!showAdminModal) return null;
 
-  const handleAdminAuth = (e) => {
+  const handleAdminAuth = async (e) => {
     e.preventDefault();
-    if (adminPassword === 'cipuyganteng') {
+    setAdminLoading(true);
+    setAdminError('');
+    
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: 'admin@mazeeda.com',
+      password: adminPassword,
+    });
+
+    if (!signInError) {
       setIsAdminUnlocked(true);
       setAdminError('');
+      await supabase.auth.signOut();
     } else {
-      setAdminError('Password salah!');
+      if (signInError.message.includes('Invalid login credentials')) {
+        setAdminError('Password salah!');
+      } else {
+        setAdminError('Akun admin belum disetting di Supabase!');
+      }
     }
+    
+    setAdminLoading(false);
   };
 
   const handleClose = () => {
@@ -210,8 +225,8 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
                 autoFocus
               />
             </div>
-            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 transition">
-              Un-lock Panel
+            <button type="submit" disabled={adminLoading} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 transition disabled:opacity-50">
+              {adminLoading ? 'Mengecek...' : 'Un-lock Panel'}
             </button>
           </form>
         ) : (

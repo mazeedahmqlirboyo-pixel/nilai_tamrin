@@ -12,9 +12,17 @@ function cn(...inputs) {
 
 const PERIODES = ['Qobla Maulud', "Ba'da Maulud"];
 const MAPELS = [
-  'Sullam Taufiq', 'Tijan Daroini', "Arba'in", 'Fushulul Fikriyah', 
-  "Imla'", "Qowa'id Shorfiyah", 'Tasrif Istilahi', 'Akhlaq Lil Banat', 
-  'Fathul Mubin', "Al-'Ilal", 'Tuhfatul Atfal'
+  'Sullam Taufiq',
+  'Fushulul Fikriyah',
+  "Qowa'id Shorfiyah",
+  'Akhlaq Lil Banat',
+  'Tasrif Istilahi',
+  "Al-'Ilal",
+  'Fathul Mubin',
+  "Arba'in An-Nawawi",
+  'Tijan Daroini',
+  'Tuhfatul Atfal',
+  "Imla'"
 ];
 
 export default function InputTab() {
@@ -179,30 +187,10 @@ export default function InputTab() {
         </button>
       </div>
 
-      {/* Mapel Card - MOVED UP */}
+      {/* Siswi Selection Card - NOW STEP 1 */}
       <div className="bg-white rounded-3xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-blue-50/50">
         <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
           <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
-          Pilih Mata Pelajaran
-        </label>
-        <PremiumSelect
-          value={mapel}
-          onChange={setMapel}
-          options={MAPELS.map(m => ({
-            label: m,
-            value: m,
-            isDanger: gradedMapelsForSiswi.includes(m)
-          }))}
-          placeholder="Pilih mapel terlebih dahulu..."
-          title="Pilih Mata Pelajaran"
-          icon={BookOpen}
-        />
-      </div>
-
-      {/* Siswi Selection Card - MOVED DOWN */}
-      <div className="bg-white rounded-3xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-blue-50/50">
-        <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-          <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
           Pilih Bagian & Cari Siswi
         </label>
         
@@ -222,7 +210,7 @@ export default function InputTab() {
             </button>
           </div>
         ) : (
-          <div className={cn("space-y-3 transition-opacity", !mapel && "opacity-50 pointer-events-none")} >
+          <div className="space-y-3" >
             
             {/* Bagian Filter */}
             <PremiumSelect
@@ -235,7 +223,7 @@ export default function InputTab() {
               placeholder="-- Semua Bagian --"
               title="Pilih Bagian"
               icon={Building}
-              disabled={uniqueBagian.length === 0 || !mapel}
+              disabled={uniqueBagian.length === 0}
               buttonClassName="py-3"
             />
 
@@ -247,18 +235,13 @@ export default function InputTab() {
                 placeholder={selectedBagian ? `Cari nama di bagian ${selectedBagian}...` : "Cari nama..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                disabled={!mapel}
                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-shadow"
               />
             </div>
             
             {/* List */}
             <div className="max-h-40 overflow-y-auto space-y-1 rounded-xl p-1 bg-slate-50 border border-slate-100 custom-scrollbar">
-              {!mapel ? (
-                <div className="p-4 text-center text-sm text-red-500 font-semibold bg-red-50 rounded-lg border border-red-100">
-                  Pilih Mata Pelajaran di atas terlebih dahulu!
-                </div>
-              ) : filteredNames.length > 0 ? filteredNames.map(item => {
+              {filteredNames.length > 0 ? filteredNames.map(item => {
                 const isComplete = gradedSiswis.includes(item.nama_siswi);
                 
                 return (
@@ -294,6 +277,29 @@ export default function InputTab() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Mapel Card - NOW STEP 2 */}
+      <div className="bg-white rounded-3xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-blue-50/50">
+        <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+          <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+          Pilih Mata Pelajaran
+        </label>
+        <div className={cn("transition-opacity", !selectedName && "opacity-50 pointer-events-none")}>
+          <PremiumSelect
+            value={mapel}
+            onChange={setMapel}
+            options={MAPELS.map(m => ({
+              label: m,
+              value: m,
+              isDanger: gradedMapelsForSiswi.includes(m)
+            }))}
+            placeholder={selectedName ? "Pilih mapel..." : "Pilih siswi terlebih dahulu..."}
+            title="Pilih Mata Pelajaran"
+            icon={BookOpen}
+            disabled={!selectedName}
+          />
+        </div>
       </div>
 
       <NilaiGrid nilai={nilai} setNilai={setNilai} disabled={!mapel || !selectedName} />

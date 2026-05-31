@@ -73,17 +73,20 @@ export default function RecapTab() {
       const bgn = siswiBagianMap[item.nama_siswi];
       if (bgn === selectedBagian) {
         if (!groups[item.nama_siswi]) {
-          groups[item.nama_siswi] = { details: [], total: 0 };
+          groups[item.nama_siswi] = { details: [], total: 0, validCount: 0 };
         }
         groups[item.nama_siswi].details.push(item);
-        groups[item.nama_siswi].total += Number(item.nilai);
+        if (item.nilai >= 0) {
+          groups[item.nama_siswi].total += Number(item.nilai);
+          groups[item.nama_siswi].validCount += 1;
+        }
       }
     });
 
     // Convert object to array, calculate average, and sort alphabetically
     return Object.entries(groups).map(([name, val]) => ({
       name,
-      avg: (val.total / val.details.length).toFixed(1),
+      avg: val.validCount > 0 ? (val.total / val.validCount).toFixed(1) : '-',
       details: val.details, // array of records
       count: val.details.length
     })).sort((a, b) => a.name.localeCompare(b.name));
@@ -95,7 +98,7 @@ export default function RecapTab() {
   };
 
   const startEdit = (detail) => {
-    setEditingRow({ id: detail.id, value: detail.nilai });
+    setEditingRow({ id: detail.id, value: detail.nilai < 0 ? '' : detail.nilai });
   };
 
   const handleUpdate = async (id) => {
@@ -104,7 +107,10 @@ export default function RecapTab() {
     setIsUpdating(true);
     const { error: updErr } = await supabase
       .from('nilai_tamrin')
-      .update({ nilai: parseFloat(editingRow.value) })
+      .update({ 
+        nilai: parseFloat(editingRow.value),
+        catatan: null // Clear note when new numeric score is entered
+      })
       .eq('id', id);
 
     setIsUpdating(false);
@@ -114,7 +120,7 @@ export default function RecapTab() {
       alert('Gagal update nilai: ' + updErr.message);
     } else {
       // Modify local data immediately so we don't have to refetch all
-      setData(prev => prev.map(item => item.id === id ? { ...item, nilai: parseFloat(editingRow.value) } : item));
+      setData(prev => prev.map(item => item.id === id ? { ...item, nilai: parseFloat(editingRow.value), catatan: null } : item));
       setEditingRow(null);
     }
   };
@@ -129,11 +135,15 @@ export default function RecapTab() {
           nama_siswi: item.nama_siswi,
           periode: item.periode,
           details: [], 
-          total: 0 
+          total: 0,
+          validCount: 0
         };
       }
       fullGroups[key].details.push(item);
-      fullGroups[key].total += Number(item.nilai);
+      if (item.nilai >= 0) {
+        fullGroups[key].total += Number(item.nilai);
+        fullGroups[key].validCount += 1;
+      }
     });
 
     const exportData = Object.values(fullGroups).map(val => {
@@ -141,12 +151,12 @@ export default function RecapTab() {
         "Bagian": siswiBagianMap[val.nama_siswi] || '-',
         "Nama Siswi": val.nama_siswi,
         "Priode": val.periode,
-        "Rata-Rata": parseFloat((val.total / val.details.length).toFixed(1))
+        "Rata-Rata": val.validCount > 0 ? parseFloat((val.total / val.validCount).toFixed(1)) : '-'
       };
       
       // Jadikan nama mapel murni sebagai header (karena periodenya sudah ada di kolom Priode)
       val.details.forEach(detail => {
-        row[detail.mata_pelajaran] = detail.nilai;
+        row[detail.mata_pelajaran] = detail.nilai < 0 ? (detail.catatan || 'Tidak Hadir') : detail.nilai;
       });
       
       return row;
@@ -338,8 +348,11 @@ export default function RecapTab() {
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2">
-                                  <div className="text-blue-700 font-bold text-base px-3 py-1 bg-white rounded-lg shadow-sm border border-slate-100">
-                                    {detail.nilai}
+                                  <div className={cn(
+                                    "font-bold text-sm px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-100",
+                                    detail.nilai < 0 ? "text-amber-700 bg-amber-50 border-amber-100 italic" : "text-blue-700 text-base"
+                                  )}>
+                                    {detail.nilai < 0 ? (detail.catatan || 'Gak Masuk') : detail.nilai}
                                   </div>
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); startEdit(detail); }}

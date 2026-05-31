@@ -34,6 +34,8 @@ export default function InputTab() {
   const [selectedName, setSelectedName] = useState('');
   
   const [nilai, setNilai] = useState(null);
+  const [isAbsent, setIsAbsent] = useState(false);
+  const [catatan, setCatatan] = useState('');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -110,7 +112,10 @@ export default function InputTab() {
   }, [searchQuery, selectedBagian, siswiList]);
 
   const handleSave = () => {
-    if (!periode || !selectedName || !mapel || nilai === null) {
+    const isNilaiValid = isAbsent ? true : (nilai !== null);
+    const isCatatanValid = isAbsent ? (catatan && catatan.trim() !== '') : true;
+
+    if (!periode || !selectedName || !mapel || !isNilaiValid || !isCatatanValid) {
       setNotification({ type: 'error', message: 'Lengkapi semua data sebelum menyimpan!' });
       setTimeout(() => setNotification(null), 3000);
       return;
@@ -134,7 +139,8 @@ export default function InputTab() {
         nama_siswi: selectedName,
         mata_pelajaran: mapel,
         periode: periode,
-        nilai: nilai
+        nilai: isAbsent ? -1 : nilai,
+        catatan: isAbsent ? catatan.trim() : null
       }, {
         onConflict: 'nama_siswi, mata_pelajaran, periode'
       });
@@ -149,6 +155,8 @@ export default function InputTab() {
       setGradedSiswis(prev => Array.from(new Set([...prev, selectedName])));
       setGradedMapelsForSiswi(prev => Array.from(new Set([...prev, mapel])));
       setNilai(null);
+      setIsAbsent(false);
+      setCatatan('');
       setShowSuccessModal(true);
       setTimeout(() => setShowSuccessModal(false), 500);
     }
@@ -302,13 +310,56 @@ export default function InputTab() {
         </div>
       </div>
 
-      <NilaiGrid nilai={nilai} setNilai={setNilai} disabled={!mapel || !selectedName} />
+      {/* Absent Option Checkbox */}
+      <div className={cn("bg-white rounded-3xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-blue-50/50 transition-opacity", (!mapel || !selectedName) && "opacity-50 pointer-events-none")}>
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <input 
+            type="checkbox"
+            checked={isAbsent}
+            onChange={(e) => {
+              setIsAbsent(e.target.checked);
+              if (e.target.checked) {
+                setNilai(null); // Reset nilai if marked absent
+              } else {
+                setCatatan(''); // Reset catatan if marked present
+              }
+            }}
+            disabled={!mapel || !selectedName}
+            className="w-5 h-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500/50 cursor-pointer"
+          />
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-slate-700">Siswi tidak masuk / Berikan catatan khusus</span>
+            <span className="text-xs text-slate-500">Gunakan ini jika siswi berhalangan hadir atau memerlukan keterangan khusus.</span>
+          </div>
+        </label>
+
+        {isAbsent && (
+          <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Keterangan / Catatan Masuk (misal: Sakit, Izin, Susulan, dll.)</label>
+            <input 
+              type="text"
+              placeholder="Masukkan alasan tidak masuk atau catatan lainnya..."
+              value={catatan}
+              onChange={(e) => setCatatan(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-shadow"
+            />
+          </div>
+        )}
+      </div>
+
+      <NilaiGrid nilai={nilai} setNilai={setNilai} disabled={!mapel || !selectedName || isAbsent} />
 
       {/* Action Area */}
       <div className="pt-2 pb-6">
         <button
           onClick={handleSave}
-          disabled={isSubmitting || !periode || !selectedName || !mapel || nilai === null}
+          disabled={
+            isSubmitting || 
+            !periode || 
+            !selectedName || 
+            !mapel || 
+            (isAbsent ? (!catatan || catatan.trim() === '') : (nilai === null))
+          }
           className="w-full bg-blue-600 text-white font-bold text-lg rounded-3xl py-4 flex items-center justify-center gap-2 shadow-[0_8px_20px_-6px_rgba(37,99,235,0.5)] disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98]"
         >
           {isSubmitting ? (

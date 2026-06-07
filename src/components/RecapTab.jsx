@@ -13,7 +13,7 @@ function cn(...inputs) {
 }
 
 export default function RecapTab() {
-  const { siswiBagianMap, uniqueBagian, loadingSiswi, globalPeriode } = useSiswi();
+  const { siswiBagianMap, uniqueBagian, loadingSiswi, globalPeriode, globalTahunAjaran } = useSiswi();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,19 +22,13 @@ export default function RecapTab() {
   const [selectedBagian, setSelectedBagian] = useState('');
 
   // State for which student accordion is currently open
-  const [expandedName, setExpandedName] = useState(null);
+  const [expandedNis, setExpandedNis] = useState(null);
   
   const [editingRow, setEditingRow] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Admin Modal States
   const [showAdminModal, setShowAdminModal] = useState(false);
-
-  useEffect(() => {
-    if (globalPeriode) {
-      fetchData();
-    }
-  }, [globalPeriode]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -45,6 +39,8 @@ export default function RecapTab() {
       .from('nilai_tamrin')
       .select('*')
       .eq('periode', globalPeriode)
+      .eq('tahun_ajaran', globalTahunAjaran)
+      .eq('kategori', 'Tamrin')
       .order('created_at', { ascending: false });
 
     if (resNilai.error) {
@@ -55,6 +51,12 @@ export default function RecapTab() {
 
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (globalPeriode && globalTahunAjaran) {
+      fetchData();
+    }
+  }, [globalPeriode, globalTahunAjaran]);
 
   const uniqueMapels = useMemo(() => {
     const mpls = new Set();
@@ -70,30 +72,31 @@ export default function RecapTab() {
 
     const groups = {};
     data.forEach(item => {
-      const bgn = siswiBagianMap[item.nama_siswi];
+      const bgn = siswiBagianMap[item.nis];
       if (bgn === selectedBagian) {
-        if (!groups[item.nama_siswi]) {
-          groups[item.nama_siswi] = { details: [], total: 0, validCount: 0 };
+        if (!groups[item.nis]) {
+          groups[item.nis] = { nama_siswi: item.nama_siswi, details: [], total: 0, validCount: 0 };
         }
-        groups[item.nama_siswi].details.push(item);
+        groups[item.nis].details.push(item);
         if (item.nilai >= 0) {
-          groups[item.nama_siswi].total += Number(item.nilai);
-          groups[item.nama_siswi].validCount += 1;
+          groups[item.nis].total += Number(item.nilai);
+          groups[item.nis].validCount += 1;
         }
       }
     });
 
     // Convert object to array, calculate average, and sort alphabetically
-    return Object.entries(groups).map(([name, val]) => ({
-      name,
+    return Object.entries(groups).map(([nis, val]) => ({
+      nis,
+      name: val.nama_siswi,
       avg: val.validCount > 0 ? (val.total / val.validCount).toFixed(1) : '-',
       details: val.details, // array of records
       count: val.details.length
     })).sort((a, b) => a.name.localeCompare(b.name));
   }, [data, siswiBagianMap, selectedBagian]);
 
-  const toggleExpand = (name) => {
-    setExpandedName(prev => prev === name ? null : name);
+  const toggleExpand = (nis) => {
+    setExpandedNis(prev => prev === nis ? null : nis);
     setEditingRow(null); // Cancel any active edits when swapping accordion
   };
 
@@ -105,10 +108,11 @@ export default function RecapTab() {
     if (!editingRow || editingRow.value === '') return;
     
     setIsUpdating(true);
+    const normalizedVal = String(editingRow.value).replace(',', '.');
     const { error: updErr } = await supabase
       .from('nilai_tamrin')
       .update({ 
-        nilai: parseFloat(editingRow.value),
+        nilai: parseFloat(normalizedVal),
         catatan: null // Clear note when new numeric score is entered
       })
       .eq('id', id);
@@ -120,18 +124,19 @@ export default function RecapTab() {
       alert('Gagal update nilai: ' + updErr.message);
     } else {
       // Modify local data immediately so we don't have to refetch all
-      setData(prev => prev.map(item => item.id === id ? { ...item, nilai: parseFloat(editingRow.value), catatan: null } : item));
+      setData(prev => prev.map(item => item.id === id ? { ...item, nilai: parseFloat(normalizedVal), catatan: null } : item));
       setEditingRow(null);
     }
   };
 
   const exportToExcel = () => {
-    // Group data by nama_siswi AND periode
+    // Group data by nis AND periode
     const fullGroups = {};
     data.forEach(item => {
-      const key = `${item.nama_siswi}_${item.periode}`;
+      const key = `${item.nis}_${item.periode}`;
       if (!fullGroups[key]) {
         fullGroups[key] = { 
+          nis: item.nis,
           nama_siswi: item.nama_siswi,
           periode: item.periode,
           details: [], 
@@ -148,7 +153,9 @@ export default function RecapTab() {
 
     const exportData = Object.values(fullGroups).map(val => {
       const row = {
-        "Bagian": siswiBagianMap[val.nama_siswi] || '-',
+        "Tahun Ajaran": globalTahunAjaran,
+        "NIS": val.nis,
+        "Bagian": siswiBagianMap[val.nis] || '-',
         "Nama Siswi": val.nama_siswi,
         "Priode": val.periode,
         "Rata-Rata": val.validCount > 0 ? parseFloat((val.total / val.validCount).toFixed(1)) : '-'
@@ -256,11 +263,11 @@ export default function RecapTab() {
       ) : (
         <div className="space-y-3">
           {groupedData.map((student) => {
-            const isExpanded = expandedName === student.name;
+            const isExpanded = expandedNis === student.nis;
             
             return (
               <div 
-                key={student.name} 
+                key={student.nis} 
                 className={cn(
                   "bg-white rounded-3xl shadow-[0_2px_8px_-3px_rgba(6,81,237,0.08)] border transition-all duration-300 overflow-hidden",
                   isExpanded ? "border-blue-200" : "border-blue-50"
@@ -268,12 +275,15 @@ export default function RecapTab() {
               >
                 {/* Header (Always Visible) */}
                 <button 
-                  onClick={() => toggleExpand(student.name)}
+                  onClick={() => toggleExpand(student.nis)}
                   className="w-full p-4 flex items-center justify-between active:bg-slate-50 transition-colors text-left"
                 >
                   <div className="flex-1 pr-4">
                     <h3 className="font-bold text-slate-800 text-base leading-tight mb-1">{student.name}</h3>
-                    <div className="flex items-center text-xs text-slate-500 gap-2">
+                    <div className="flex flex-wrap items-center text-xs text-slate-500 gap-x-3 gap-y-1">
+                      <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] font-semibold text-slate-600">
+                        NIS: {student.nis}
+                      </span>
                       <span className="flex items-center gap-1">
                         <GraduationCap className="w-3.5 h-3.5 text-blue-400" />
                         {student.count} Mapel terisi

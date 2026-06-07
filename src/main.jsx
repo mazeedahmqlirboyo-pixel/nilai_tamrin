@@ -10,14 +10,19 @@ function Root() {
   const [session, setSession] = useState(undefined); // undefined = masih loading
 
   useEffect(() => {
-    // Cek sesi yang sudah tersimpan di localStorage
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    // Dengarkan perubahan auth (login / logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    // Gunakan hanya onAuthStateChange — ini juga fire INITIAL_SESSION saat mount
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') {
+        // Set session pertama kali (bisa null kalau belum login, atau ada kalau sudah login)
+        setSession(session);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        // Update session saat login berhasil atau token diperbarui
+        setSession(session);
+      } else if (event === 'SIGNED_OUT') {
+        // Baru tampilkan login kalau benar-benar logout
+        setSession(null);
+      }
+      // Event lain (PASSWORD_RECOVERY, dll) diabaikan agar tidak mengganggu
     });
 
     return () => subscription.unsubscribe();

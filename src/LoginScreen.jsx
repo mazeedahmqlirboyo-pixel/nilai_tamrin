@@ -3,6 +3,8 @@ import { supabase } from './lib/supabase';
 import { AlertCircle, Loader2, Lock } from 'lucide-react';
 import logoSrc from './assets/logo.png';
 
+const EMAIL = 'ayahmazeeda32@gmail.com';
+
 export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,16 +20,30 @@ export default function LoginScreen() {
     setLoading(true);
     setError('');
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: EMAIL,
-      password: password,
-    });
+    // Timeout 10 detik agar tidak loading selamanya
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 10000)
+    );
 
-    if (authError) {
-      setError('Password salah! Silakan coba lagi.');
+    try {
+      const { error: authError } = await Promise.race([
+        supabase.auth.signInWithPassword({ email: EMAIL, password }),
+        timeoutPromise,
+      ]);
+
+      if (authError) {
+        setError('Password salah! Silakan coba lagi.');
+        setLoading(false);
+      }
+      // Kalau berhasil, onAuthStateChange di main.jsx otomatis menangani redirect
+    } catch (err) {
+      if (err.message === 'timeout') {
+        setError('Koneksi lambat atau akun belum terdaftar. Periksa jaringan dan coba lagi.');
+      } else {
+        setError('Terjadi kesalahan. Silakan coba lagi.');
+      }
       setLoading(false);
     }
-    // Kalau berhasil, onAuthStateChange di App.jsx otomatis menangani redirect
   };
 
   return (

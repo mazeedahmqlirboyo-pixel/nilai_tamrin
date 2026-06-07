@@ -58,6 +58,10 @@ function NilaiAppContent() {
   const [selectedBagian, setSelectedBagian] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // PWA Install Prompt States
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
   // Initialize from global settings once loaded
   useEffect(() => {
     if (globalTahunAjaran) setLocalTahunAjaran(globalTahunAjaran);
@@ -66,6 +70,27 @@ function NilaiAppContent() {
   useEffect(() => {
     if (globalPeriode) setLocalPeriode(globalPeriode);
   }, [globalPeriode]);
+
+  // PWA Install prompt listener
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+    }
+  };
 
   // Reset search results on academic year or period changes
   useEffect(() => {
@@ -273,6 +298,27 @@ function NilaiAppContent() {
           }
         }
       `}</style>
+
+      {/* Install Banner */}
+      {showInstallBanner && (
+        <div className="bg-blue-700 text-white text-xs flex items-center justify-between px-4 py-2.5 no-print">
+          <span className="font-semibold">📲 Simpan sebagai <strong>INFORMASI NILAI</strong> di HP</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleInstallClick}
+              className="bg-white text-blue-700 font-bold text-[11px] px-3 py-1 rounded-full shadow transition hover:bg-blue-50"
+            >
+              Instal
+            </button>
+            <button
+              onClick={() => setShowInstallBanner(false)}
+              className="text-white/60 hover:text-white text-lg leading-none"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Header (Hidden when printing) */}
       <header className="bg-gradient-to-br from-blue-800 via-blue-700 to-blue-600 rounded-b-3xl shadow-md py-4 px-4 sticky top-0 z-30 relative overflow-hidden no-print">

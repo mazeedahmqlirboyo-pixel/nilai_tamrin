@@ -12,11 +12,11 @@ export default function NilaiGrid({ nilai, setNilai, disabled }) {
 
   return (
     <div className="bg-white rounded-3xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-blue-50/50">
-      <label className="block text-sm font-semibold text-slate-700 mb-3 text-center flex items-center justify-center gap-2">
+      <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
         <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
         Tap Nilai
       </label>
-      <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2">
         {NILAI_GRID.map(val => (
           <button
             key={val}

@@ -313,7 +313,7 @@ export default function RecapTab() {
                   )}
                 >
                   <div className="overflow-hidden">
-                    <div className="px-3 pb-4 pt-1 space-y-2 border-t border-slate-100 mt-1">
+                    <div className="px-3 pb-4 pt-1 space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 border-t border-slate-100 mt-1">
                       {student.details.map((detail) => {
                         const isEditingThis = editingRow?.id === detail.id;
                         

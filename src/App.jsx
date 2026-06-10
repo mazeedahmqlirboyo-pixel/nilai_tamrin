@@ -62,14 +62,14 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-24 font-sans selection:bg-blue-200">
+    <div className="min-h-screen bg-slate-50 text-slate-800 pb-24 md:pb-28 font-sans selection:bg-blue-200">
       {/* Ramping Sticky Header */}
       <header className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500 rounded-b-2xl shadow-md py-3 px-4 sticky top-0 z-30 relative overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-5 rounded-full blur-xl transform translate-x-6 -translate-y-6"></div>
         <div className="absolute bottom-0 left-0 w-16 h-16 bg-white opacity-5 rounded-full blur-lg transform -translate-x-4 translate-y-4"></div>
 
-        <div className="flex justify-between items-center max-w-lg mx-auto relative z-10">
+        <div className="flex justify-between items-center max-w-lg md:max-w-5xl mx-auto relative z-10">
           {/* Logo & Title */}
           <div className="flex items-center gap-2">
             <img
@@ -104,12 +104,12 @@ function AppContent() {
       </header>
 
       {/* Main Content Area */}
-      <main className="p-4 max-w-lg mx-auto pb-10">
+      <main className="p-4 max-w-lg md:max-w-5xl mx-auto pb-10">
         {activeTab === 'input' ? <InputTab /> : <RecapTab />}
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 w-full bg-white/80 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.1)] z-40 pb-safe supports-[backdrop-filter]:bg-white/60">
+      <nav className="fixed bottom-0 md:bottom-4 left-0 right-0 md:left-1/2 md:-translate-x-1/2 md:w-auto md:min-w-[400px] md:rounded-3xl md:border md:shadow-lg bg-white/80 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.1)] z-40 pb-safe supports-[backdrop-filter]:bg-white/60">
         <div className="max-w-lg mx-auto flex justify-around px-3 py-2">
           <button
             onClick={() => setActiveTab('input')}

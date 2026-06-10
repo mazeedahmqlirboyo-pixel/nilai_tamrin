@@ -60,7 +60,9 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
   };
 
   const handleClose = async () => {
+    // Close modal and reset state without signing the user out.
     closeAdminModal();
+    const wasUnlocked = isAdminUnlocked;
     setIsAdminUnlocked(false);
     setAdminPassword('');
     setAdminError('');
@@ -70,7 +72,11 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
     setDelTargetTahunAjaran(globalTahunAjaran || 'SEMUA');
     setDelTargetKategori('SEMUA');
     setNewMapelName('');
-    await supabase.auth.signOut();
+    // Previously the admin modal signed the user out on close, which caused unexpected logouts.
+    // This behavior is removed to keep the session active after closing the admin panel.
+    // if (wasUnlocked) {
+    //   await supabase.auth.signOut();
+    // }
   };
 
   const handleDeleteAllSiswi = async () => {
@@ -185,26 +191,77 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
         const ws = wb.Sheets[wsname];
         const rawData = XLSX.utils.sheet_to_json(ws);
 
+        // Fetch old student list from database for this tahun_ajaran to map existing NIS
+        const { data: oldSiswis, error: fetchOldErr } = await supabase
+          .from('siswi')
+          .select('nis, nama_siswi')
+          .eq('tahun_ajaran', globalTahunAjaran);
+          
+        if (fetchOldErr) throw new Error('Gagal mengambil data lama: ' + fetchOldErr.message);
+
+        const oldSiswiMap = {}; // name -> nis
+        (oldSiswis || []).forEach(s => {
+          if (s.nama_siswi && s.nis) {
+            oldSiswiMap[s.nama_siswi.trim().toLowerCase()] = s.nis.trim();
+          }
+        });
+
         const seenNis = new Set();
+        const nisChanges = []; // { oldNis, newNis }
+
         const formattedData = rawData.map(row => {
           const rNis = row['nis'] || row['NIS'] || row['Nis'] || row['nomor_induk'] || row['no_induk'] || row['No Induk'] || row['NO INDUK'];
           const rName = row['nama_siswi'] || row['Nama Siswi'] || row['NAMA SISWI'] || row['nama'] || row['Nama'];
           const rBgn = row['bagian'] || row['Bagian'] || row['BAGIAN'] || row['kelas'];
+          
+          if (!rName) return null;
+          
+          const normalizedName = String(rName).trim();
+          const lowerName = normalizedName.toLowerCase();
+          const oldNis = oldSiswiMap[lowerName];
+          
+          let finalNis = null;
+          
+          if (rNis && String(rNis).trim() !== '') {
+            finalNis = String(rNis).trim();
+            if (oldNis && oldNis !== finalNis) {
+              nisChanges.push({ oldNis, newNis: finalNis });
+            }
+          } else {
+            if (oldNis) {
+              finalNis = oldNis;
+            } else {
+              const nameAbbr = normalizedName.replace(/[^a-zA-Z]/g, '').substring(0, 8).toUpperCase() || 'SISWI';
+              const randNum = Math.floor(1000 + Math.random() * 9000);
+              finalNis = `TEMP-${nameAbbr}-${randNum}`;
+            }
+          }
+          
           return {
-            nis: rNis ? String(rNis).trim() : null,
-            nama_siswi: rName,
-            bagian: rBgn || 'Lainnya',
+            nis: finalNis,
+            nama_siswi: normalizedName,
+            bagian: rBgn ? String(rBgn).trim() : 'Lainnya',
             tahun_ajaran: globalTahunAjaran
           };
-        }).filter(d => {
+        })
+        .filter(d => d !== null)
+        .filter(d => {
           if (!d.nis || !d.nama_siswi) return false;
-          if (seenNis.has(d.nis)) return false; // Filter duplicate NIS within the upload batch
+          if (seenNis.has(d.nis)) {
+            let checkNis = d.nis;
+            let counter = 1;
+            while (seenNis.has(checkNis)) {
+              checkNis = `${d.nis}-${counter}`;
+              counter++;
+            }
+            d.nis = checkNis;
+          }
           seenNis.add(d.nis);
           return true;
         });
 
         if(formattedData.length === 0){
-          setAdminError('Gagal: Kolom "nis" dan "nama_siswi" tidak ditemukan di dalam CSV/Excel tersebut.');
+          setAdminError('Gagal: Kolom "nama_siswi" tidak ditemukan di dalam CSV/Excel tersebut.');
           setAdminLoading(false);
           return;
         }
@@ -215,7 +272,22 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
         const insertRes = await supabase.from('siswi').upsert(formattedData, { onConflict: 'nis, tahun_ajaran' });
         if(insertRes.error) throw new Error('Gagal simpan data baru: ' + insertRes.error.message);
 
-        alert(`Berhasil! ${formattedData.length} data siswi baru telah ditambahkan untuk Tahun Ajaran ${globalTahunAjaran}.`);
+        // Update NIS on nilai_tamrin table if NIS changed
+        if (nisChanges.length > 0) {
+          for (const change of nisChanges) {
+            const { error: updateErr } = await supabase
+              .from('nilai_tamrin')
+              .update({ nis: change.newNis })
+              .eq('nis', change.oldNis)
+              .eq('tahun_ajaran', globalTahunAjaran);
+              
+            if (updateErr) {
+              console.error(`Gagal memperbarui nilai untuk NIS ${change.oldNis} ke ${change.newNis}:`, updateErr.message);
+            }
+          }
+        }
+
+        alert(`Berhasil! ${formattedData.length} data siswi baru telah ditambahkan untuk Tahun Ajaran ${globalTahunAjaran}.${nisChanges.length > 0 ? ` Terdeteksi ${nisChanges.length} perubahan NIS, riwayat nilai telah diperbarui otomatis.` : ''}`);
         handleClose();
         e.target.value = null; 
         fetchSiswi(); // Refresh context siswi
@@ -284,8 +356,16 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
         const upsertPayload = [];
 
         rawData.forEach(row => {
-          const rNis = row[nisKey] ? String(row[nisKey]).trim() : null;
-          const rName = nameKey ? row[nameKey] : '';
+          let rNis = row[nisKey] ? String(row[nisKey]).trim() : null;
+          const rName = nameKey ? String(row[nameKey]).trim() : '';
+          
+          if (!rNis && rName) {
+            // Find matched siswi by name to get her NIS
+            const matchedSiswi = (siswiList || []).find(s => s.nama_siswi.trim().toLowerCase() === rName.toLowerCase());
+            if (matchedSiswi) {
+              rNis = matchedSiswi.nis;
+            }
+          }
           
           if (!rNis) return;
 

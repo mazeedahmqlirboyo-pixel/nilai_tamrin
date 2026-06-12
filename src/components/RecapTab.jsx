@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import { CalendarDays, Book, Loader2, AlertCircle, ChevronDown, GraduationCap, Edit2, Check, X, Building, Download, Upload } from 'lucide-react';
+import { CalendarDays, Book, Loader2, AlertCircle, ChevronDown, GraduationCap, Edit2, Check, X, Building, Download, Upload, Users, CheckCircle, Clock, XCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useSiswi } from '../contexts/SiswiContext';
 import AdminModal from './AdminModal';
@@ -13,7 +13,7 @@ function cn(...inputs) {
 }
 
 export default function RecapTab() {
-  const { siswiBagianMap, uniqueBagian, loadingSiswi, globalPeriode, globalTahunAjaran } = useSiswi();
+  const { siswiBagianMap, uniqueBagian, loadingSiswi, globalPeriode, globalTahunAjaran, siswiList, mapels } = useSiswi();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,6 +29,9 @@ export default function RecapTab() {
 
   // Admin Modal States
   const [showAdminModal, setShowAdminModal] = useState(false);
+
+  // Detail Modal States for monitoring widget
+  const [detailModal, setDetailModal] = useState({ isOpen: false, type: '', data: [] });
 
   const fetchData = async () => {
     setLoading(true);
@@ -94,6 +97,31 @@ export default function RecapTab() {
       count: val.details.length
     })).sort((a, b) => a.name.localeCompare(b.name));
   }, [data, siswiBagianMap, selectedBagian]);
+
+  const stats = useMemo(() => {
+    if (!selectedBagian) return null;
+    
+    const studentsInSection = siswiList.filter(s => s.bagian === selectedBagian);
+    const totalMapel = mapels.length;
+
+    const lengkap = [];
+    const belumLengkap = [];
+    const belumDiinput = [];
+
+    studentsInSection.forEach(student => {
+      const record = groupedData.find(g => g.nis === student.nis);
+      
+      if (!record || record.count === 0) {
+        belumDiinput.push(student);
+      } else if (record.count < totalMapel) {
+        belumLengkap.push({ ...student, count: record.count, totalMapel });
+      } else {
+        lengkap.push(student);
+      }
+    });
+
+    return { total: studentsInSection.length, lengkap, belumLengkap, belumDiinput };
+  }, [selectedBagian, siswiList, groupedData, mapels]);
 
   const toggleExpand = (nis) => {
     setExpandedNis(prev => prev === nis ? null : nis);
@@ -232,6 +260,49 @@ export default function RecapTab() {
           />
         )}
       </div>
+
+      {/* Stats Monitoring Widget */}
+      {selectedBagian && stats && groupedData.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-white rounded-3xl p-4 border border-blue-50 shadow-sm flex flex-col items-center justify-center text-center">
+            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mb-2">
+              <Users className="w-4 h-4 text-blue-500" />
+            </div>
+            <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.total}</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Siswi</span>
+          </div>
+          
+          <div className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center">
+            <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center mb-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+            </div>
+            <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.lengkap.length}</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sudah Lengkap</span>
+          </div>
+
+          <button 
+            onClick={() => setDetailModal({ isOpen: true, type: 'belumLengkap', data: stats.belumLengkap })}
+            className="bg-white rounded-3xl p-4 border border-amber-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-amber-50/30 hover:border-amber-200 transition-all cursor-pointer group"
+          >
+            <div className="w-8 h-8 rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors flex items-center justify-center mb-2">
+              <Clock className="w-4 h-4 text-amber-500" />
+            </div>
+            <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.belumLengkap.length}</span>
+            <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Belum Lengkap</span>
+          </button>
+
+          <button 
+            onClick={() => setDetailModal({ isOpen: true, type: 'belumDiinput', data: stats.belumDiinput })}
+            className="bg-white rounded-3xl p-4 border border-rose-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-rose-50/30 hover:border-rose-200 transition-all cursor-pointer group"
+          >
+            <div className="w-8 h-8 rounded-full bg-rose-50 group-hover:bg-rose-100 transition-colors flex items-center justify-center mb-2">
+              <XCircle className="w-4 h-4 text-rose-500" />
+            </div>
+            <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.belumDiinput.length}</span>
+            <span className="text-[10px] font-bold text-rose-600/70 uppercase tracking-wider group-hover:text-rose-600 transition-colors">Belum Diinput</span>
+          </button>
+        </div>
+      )}
 
       {/* States Handling */}
       {loading && data.length === 0 ? (
@@ -394,6 +465,69 @@ export default function RecapTab() {
         fetchData={fetchData} 
         uniqueMapels={uniqueMapels} 
       />
+
+      {/* DETAIL MODAL OVERLAY */}
+      {detailModal.isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            <div className="p-5 flex justify-between items-center bg-slate-50 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center",
+                  detailModal.type === 'belumLengkap' ? "bg-amber-100 text-amber-600" : "bg-rose-100 text-rose-600"
+                )}>
+                  {detailModal.type === 'belumLengkap' ? <Clock className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base leading-tight">
+                    {detailModal.type === 'belumLengkap' ? 'Belum Lengkap' : 'Belum Diinput'}
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500">
+                    {detailModal.data.length} Siswi
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setDetailModal({ isOpen: false, type: '', data: [] })} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-full transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto bg-slate-50/50">
+              {detailModal.data.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle className="w-8 h-8" />
+                  </div>
+                  <p className="text-slate-700 font-bold mb-1">Wah, Mantap!</p>
+                  <p className="text-sm text-slate-500">Tidak ada siswi di kategori ini. Semua aman.</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {detailModal.data.map((student, idx) => (
+                    <div key={student.nis} className="bg-white p-3.5 rounded-2xl border border-slate-100/80 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] flex items-center gap-3 hover:border-blue-100 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-slate-700 truncate">{student.nama_siswi}</p>
+                        <p className="text-xs font-semibold text-slate-400 mt-0.5">NIS: {student.nis}</p>
+                      </div>
+                      {detailModal.type === 'belumLengkap' && (
+                        <div className="flex flex-col items-end flex-shrink-0">
+                          <span className="text-[10px] font-bold text-slate-400 mb-0.5 uppercase tracking-wider">Progress</span>
+                          <span className="text-xs font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100/50">
+                            {student.count} / {student.totalMapel}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

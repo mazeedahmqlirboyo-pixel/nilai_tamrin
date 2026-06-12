@@ -121,7 +121,7 @@ export default function RecapTab() {
 
     if (updErr) {
       console.error(updErr);
-      alert('Gagal update nilai: ' + updErr.message);
+      window.Swal.fire('Gagal!', 'Gagal update nilai: ' + updErr.message, 'error');
     } else {
       // Modify local data immediately so we don't have to refetch all
       setData(prev => prev.map(item => item.id === id ? { ...item, nilai: parseFloat(normalizedVal), catatan: null } : item));

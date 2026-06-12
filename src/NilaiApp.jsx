@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { Search, CalendarDays, BookOpen, AlertCircle, ChevronDown, GraduationCap, Building, Loader2, Printer, ArrowLeft, Award, FileText, X } from 'lucide-react';
 import { SiswiProvider, useSiswi } from './contexts/SiswiContext';
@@ -51,6 +51,16 @@ function NilaiAppContent() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loadingLogin, setLoadingLogin] = useState(false);
+
+  // Toast Notification State
+  const [toastMsg, setToastMsg] = useState({ show: false, title: '', message: '', type: 'success' });
+  const showToast = (title, message, type = 'success') => {
+    setToastMsg({ show: true, title, message, type });
+    if (type !== 'loading') {
+      setTimeout(() => setToastMsg(prev => ({ ...prev, show: false })), 3500);
+    }
+  };
 
   // Admin Mode Search & Filter States
   const [students, setStudents] = useState([]);
@@ -200,16 +210,35 @@ function NilaiAppContent() {
     }
   };
 
-  // Admin Mode passcode checking
-  const handleAdminLogin = (e) => {
+  // Admin Mode login checking
+  const handleAdminLogin = async (e) => {
     if (e) e.preventDefault();
-    if (loginPassword === 'ayahmazeeda') {
-      setIsAdminUnlocked(true);
-      setShowLoginModal(false);
-      setLoginPassword('');
-      setLoginError('');
-    } else {
-      setLoginError('Password salah!');
+    if (!loginPassword) {
+      setLoginError('Masukkan password terlebih dahulu!');
+      return;
+    }
+
+    setLoadingLogin(true);
+    setLoginError('');
+
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: 'ayahmazeeda32@gmail.com',
+        password: loginPassword,
+      });
+
+      if (authError) {
+        setLoginError('Password salah!');
+      } else {
+        setIsAdminUnlocked(true);
+        setShowLoginModal(false);
+        setLoginPassword('');
+        setLoginError('');
+      }
+    } catch (err) {
+      setLoginError('Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      setLoadingLogin(false);
     }
   };
 
@@ -267,8 +296,57 @@ function NilaiAppContent() {
     return { items, average };
   }, [localMapels, grades]);
 
-  const handlePrint = () => {
-    window.print();
+  const raportRef = useRef(null);
+
+  const handleDownload = async () => {
+    if (!raportRef.current) return;
+    
+    showToast("Menyiapkan Gambar", "Mohon tunggu sebentar...", "loading");
+
+    try {
+      if (!window.htmlToImage) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js';
+          script.onload = resolve;
+          script.onerror = () => reject(new Error("Gagal memuat library pembuat gambar"));
+          document.head.appendChild(script);
+        });
+      }
+      
+      if (!window.htmlToImage) {
+        throw new Error("Sistem pembuat gambar tidak tersedia.");
+      }
+
+      const element = raportRef.current;
+      
+      const image = await window.htmlToImage.toJpeg(element, { 
+        quality: 0.95, 
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        style: {
+          margin: '0',
+          transform: 'none'
+        }
+      });
+      
+      const link = document.createElement("a");
+      link.href = image;
+      link.download = `RAPORT_${selectedStudent?.nama_siswi?.replace(/\s+/g, '_') || 'SISWI'}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showToast("Berhasil!", "Gambar raport telah diunduh.", "success");
+      
+    } catch (err) {
+      console.error("Gagal mengunduh raport:", err);
+      let errMsg = err.message || String(err);
+      if (errMsg.includes('oklab')) {
+        errMsg = "Warna oklab tidak didukung. Coba gunakan browser lain.";
+      }
+      showToast("Gagal Unduh", errMsg, "error");
+    }
   };
 
   return (
@@ -412,11 +490,11 @@ function NilaiAppContent() {
                 Kembali Cari
               </button>
               <button 
-                onClick={handlePrint}
+                onClick={handleDownload}
                 className="flex items-center gap-1.5 text-sm font-bold text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-2xl shadow transition"
               >
                 <Printer className="w-4 h-4" />
-                Cetak Raport
+                Unduh Nilai
               </button>
             </div>
 
@@ -426,8 +504,17 @@ function NilaiAppContent() {
                 <span className="text-sm font-bold text-slate-500">Memuat Nilai {kategori}...</span>
               </div>
             ) : (
-              /* Printable Report Document */
-              <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-md space-y-6 print-container raport-card">
+              /* Story-ready Report Card Wrapper */
+              <div className="w-full max-w-[400px] mx-auto flex justify-center">
+                <div 
+                  ref={raportRef}
+                  className="bg-gradient-to-b from-white to-blue-50/50 rounded-[2rem] p-6 sm:p-8 border border-slate-100 shadow-2xl print-container raport-card w-full min-h-[711px] flex flex-col relative overflow-hidden shrink-0 m-0"
+                >
+                {/* Background Decoration */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-blue-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-100 rounded-full blur-2xl opacity-50 translate-y-1/4 -translate-x-1/4 pointer-events-none"></div>
+                
+                <div className="relative z-10 space-y-4 flex-1 flex flex-col">
                 
                 {/* Official Header */}
                 <div className="text-center pb-4 border-b-2 border-slate-100 relative">
@@ -444,22 +531,25 @@ function NilaiAppContent() {
                   </div>
                 </div>
 
-                {/* Student Bio info */}
-                <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Nama Siswi</span>
-                    <span className="text-slate-800 text-sm font-bold block">{selectedStudent.nama_siswi}</span>
+                {/* Student Bio info (Compact) */}
+                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Nama Siswi</span>
+                    <span className="text-slate-800 text-xs font-bold">{selectedStudent.nama_siswi}</span>
                   </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Nomor Induk (NIS)</span>
-                    <span className="text-slate-800 text-sm font-bold block">{selectedStudent.nis}</span>
-                  </div>
-                  <div className="space-y-1 col-span-2 border-t border-slate-200/60 pt-2 mt-1">
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Bagian / Kelas</span>
-                    <span className="text-slate-800 text-sm font-bold block flex items-center gap-1">
-                      <Building className="w-3.5 h-3.5 text-blue-500" />
-                      {selectedStudent.bagian || '-'}
-                    </span>
+                  <div className="flex items-center gap-3 text-right">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">NIS</span>
+                      <span className="text-slate-800 text-xs font-bold">{selectedStudent.nis}</span>
+                    </div>
+                    <div className="w-px h-6 bg-slate-200"></div>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Kelas</span>
+                      <span className="text-slate-800 text-xs font-bold flex items-center gap-1 justify-end">
+                        <Building className="w-3 h-3 text-blue-500" />
+                        {selectedStudent.bagian || '-'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -527,18 +617,10 @@ function NilaiAppContent() {
                   </div>
                 </div>
 
-                {/* Footer Signatures */}
-                <div className="pt-8 grid grid-cols-2 text-center text-[10px] font-semibold text-slate-500">
-                  <div className="space-y-8">
-                    <span>Wali Kelas</span>
-                    <div className="w-24 border-b border-slate-300 mx-auto"></div>
-                  </div>
-                  <div className="space-y-8">
-                    <span>Kepala Madrasah</span>
-                    <div className="w-24 border-b border-slate-300 mx-auto"></div>
-                  </div>
-                </div>
+                {/* (Footer Removed) */}
 
+                </div> {/* End z-10 relative content */}
+                </div>
               </div>
             )}
           </div>
@@ -715,6 +797,25 @@ function NilaiAppContent() {
 
       </main>
 
+      {/* Toast Notification */}
+      {toastMsg.show && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <div className={`rounded-2xl shadow-2xl flex items-center gap-3 px-5 py-4 min-w-[280px] max-w-sm border border-white/10 ${
+            toastMsg.type === 'error' ? 'bg-red-600 text-white' : 
+            toastMsg.type === 'loading' ? 'bg-blue-600 text-white' : 
+            'bg-green-600 text-white'
+          }`}>
+            {toastMsg.type === 'error' && <AlertCircle className="w-6 h-6 flex-shrink-0" />}
+            {toastMsg.type === 'loading' && <Loader2 className="w-6 h-6 animate-spin flex-shrink-0" />}
+            {toastMsg.type === 'success' && <Award className="w-6 h-6 flex-shrink-0" />}
+            <div>
+              <h4 className="font-bold text-sm tracking-wide">{toastMsg.title}</h4>
+              {toastMsg.message && <p className="text-xs opacity-90 mt-0.5">{toastMsg.message}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Admin Login Modal (passcode: ayahmazeeda) */}
       {showLoginModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -753,9 +854,17 @@ function NilaiAppContent() {
               />
               <button 
                 type="submit"
-                className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 transition"
+                disabled={loadingLogin}
+                className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 transition disabled:opacity-50 flex justify-center items-center gap-2"
               >
-                Masuk Mode Admin
+                {loadingLogin ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Memverifikasi...
+                  </>
+                ) : (
+                  'Masuk Mode Admin'
+                )}
               </button>
             </form>
           </div>

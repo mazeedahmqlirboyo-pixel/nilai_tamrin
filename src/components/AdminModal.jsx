@@ -80,7 +80,17 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
   };
 
   const handleDeleteAllSiswi = async () => {
-    if(!window.confirm(`YAKIN INGIN MENGHAPUS SEMUA DATA MASTER SISWI TAHUN AJARAN ${globalTahunAjaran} PERMANEN?`)) return;
+    const result = await window.Swal.fire({
+      title: 'Peringatan Berbahaya!',
+      text: `YAKIN INGIN MENGHAPUS SEMUA DATA MASTER SISWI TAHUN AJARAN ${globalTahunAjaran} PERMANEN?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, Hapus Semua!',
+      cancelButtonText: 'Batal'
+    });
+    if (!result.isConfirmed) return;
     
     setAdminLoading(true);
     setAdminError('');
@@ -90,7 +100,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
     if(error){
       setAdminError('Gagal menghapus: ' + error.message);
     } else {
-      alert(`Semua data master siswi Tahun Ajaran ${globalTahunAjaran} berhasil dikosongkan!`);
+      window.Swal.fire('Berhasil!', `Semua data master siswi Tahun Ajaran ${globalTahunAjaran} berhasil dikosongkan!`, 'success');
       fetchSiswi(); // Refresh context
       fetchData(); // Refresh recap data
     }
@@ -108,7 +118,17 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
       msg = `PERINGATAN KERAS!\n\nAnda akan menghapus SELURUH Riwayat Nilai Tamrin di database (Semua Tahun Ajaran, Periode, Bagian, Pelajaran, & Kategori)!\n\nLanjutkan?`;
     }
 
-    if(!window.confirm(msg)) return;
+    const result = await window.Swal.fire({
+      title: 'Konfirmasi Hapus Nilai',
+      html: msg.replace(/\n/g, '<br/>'),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, Bantai Nilai!',
+      cancelButtonText: 'Batal'
+    });
+    if (!result.isConfirmed) return;
 
     setAdminLoading(true);
     setAdminError('');
@@ -165,7 +185,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
         if(delErr) throw new Error(delErr.message);
       }
 
-      alert('Berhasil menghapus nilai sesuai filter!');
+      window.Swal.fire('Berhasil!', 'Berhasil menghapus nilai sesuai filter!', 'success');
       fetchData(); 
       
     } catch(err) {
@@ -287,7 +307,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
           }
         }
 
-        alert(`Berhasil! ${formattedData.length} data siswi baru telah ditambahkan untuk Tahun Ajaran ${globalTahunAjaran}.${nisChanges.length > 0 ? ` Terdeteksi ${nisChanges.length} perubahan NIS, riwayat nilai telah diperbarui otomatis.` : ''}`);
+        window.Swal.fire('Upload Berhasil!', `${formattedData.length} data siswi baru telah ditambahkan untuk Tahun Ajaran ${globalTahunAjaran}.${nisChanges.length > 0 ? `<br><br>Terdeteksi ${nisChanges.length} perubahan NIS, riwayat nilai telah diperbarui otomatis.` : ''}`, 'success');
         handleClose();
         e.target.value = null; 
         fetchSiswi(); // Refresh context siswi
@@ -410,7 +430,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
 
         if (insertErr) throw new Error('Gagal simpan ke database: ' + insertErr.message);
 
-        alert(`Berhasil! Mengunggah ${upsertPayload.length} nilai Ujian untuk tahun ajaran ${globalTahunAjaran} periode ${globalPeriode}.`);
+        window.Swal.fire('Upload Berhasil!', `Mengunggah ${upsertPayload.length} nilai Ujian untuk tahun ajaran ${globalTahunAjaran} periode ${globalPeriode}.`, 'success');
         handleClose();
         e.target.value = null;
         fetchData(); // Refresh recap data
@@ -444,7 +464,17 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
   };
 
   const handleDeleteMapel = async (name) => {
-    if (!window.confirm(`Yakin ingin menghapus mata pelajaran "${name}" untuk tahun ajaran ${globalTahunAjaran}?`)) return;
+    const result = await window.Swal.fire({
+      title: 'Hapus Pelajaran?',
+      text: `Yakin ingin menghapus mata pelajaran "${name}" untuk tahun ajaran ${globalTahunAjaran}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Hapus',
+      cancelButtonText: 'Batal'
+    });
+    if (!result.isConfirmed) return;
     setAdminLoading(true);
     setAdminError('');
     const res = await deleteMapel(name);

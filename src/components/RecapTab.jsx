@@ -103,11 +103,11 @@ export default function RecapTab() {
     
     const studentsInSection = siswiList.filter(s => s.bagian === selectedBagian);
     const totalMapel = mapels.length;
-
+    
     const lengkap = [];
     const belumLengkap = [];
     const belumDiinput = [];
-
+    
     studentsInSection.forEach(student => {
       const record = groupedData.find(g => g.nis === student.nis);
       
@@ -119,9 +119,38 @@ export default function RecapTab() {
         lengkap.push(student);
       }
     });
-
+    
     return { total: studentsInSection.length, lengkap, belumLengkap, belumDiinput };
   }, [selectedBagian, siswiList, groupedData, mapels]);
+
+  const overallStats = useMemo(() => {
+    const totalMapel = mapels.length;
+    const lengkap = [];
+    const belumLengkap = [];
+    const belumDiinput = [];
+
+    // Helper for grouped data regardless of filter
+    const allGroups = {};
+    data.forEach(item => {
+      if (!allGroups[item.nis]) {
+        allGroups[item.nis] = { count: 0 };
+      }
+      allGroups[item.nis].count += 1;
+    });
+
+    siswiList.forEach(student => {
+      const record = allGroups[student.nis];
+      if (!record || record.count === 0) {
+        belumDiinput.push(student);
+      } else if (record.count < totalMapel) {
+        belumLengkap.push({ ...student, count: record.count, totalMapel });
+      } else {
+        lengkap.push(student);
+      }
+    });
+
+    return { total: siswiList.length, lengkap, belumLengkap, belumDiinput };
+  }, [siswiList, data, mapels]);
 
   const toggleExpand = (nis) => {
     setExpandedNis(prev => prev === nis ? null : nis);
@@ -261,48 +290,82 @@ export default function RecapTab() {
         )}
       </div>
 
-      {/* Stats Monitoring Widget */}
-      {selectedBagian && stats && groupedData.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white rounded-3xl p-4 border border-blue-50 shadow-sm flex flex-col items-center justify-center text-center">
-            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mb-2">
-              <Users className="w-4 h-4 text-blue-500" />
-            </div>
-            <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.total}</span>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Siswi</span>
-          </div>
-          
-          <div className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center">
-            <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center mb-2">
-              <CheckCircle className="w-4 h-4 text-green-500" />
-            </div>
-            <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.lengkap.length}</span>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sudah Lengkap</span>
-          </div>
+       {/* Stats Monitoring Widget (per selected bagian) */}
+{selectedBagian && stats && (
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+ 
+           <div className="bg-white rounded-3xl p-4 border border-blue-50 shadow-sm flex flex-col items-center justify-center text-center">
+             <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mb-2">
+               <Users className="w-4 h-4 text-blue-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.total}</span>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Siswi</span>
+           </div>
+           <div className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center">
+             <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center mb-2">
+               <CheckCircle className="w-4 h-4 text-green-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.lengkap.length}</span>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sudah Lengkap</span>
+           </div>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'belumLengkap', data: stats.belumLengkap })}
+             className="bg-white rounded-3xl p-4 border border-amber-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-amber-50/30 hover:border-amber-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors flex items-center justify-center mb-2">
+               <Clock className="w-4 h-4 text-amber-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.belumLengkap.length}</span>
+             <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Belum Lengkap</span>
+           </button>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'belumDiinput', data: stats.belumDiinput })}
+             className="bg-white rounded-3xl p-4 border border-rose-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-rose-50/30 hover:border-rose-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-rose-50 group-hover:bg-rose-100 transition-colors flex items-center justify-center mb-2">
+               <XCircle className="w-4 h-4 text-rose-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.belumDiinput.length}</span>
+             <span className="text-[10px] font-bold text-rose-600/70 uppercase tracking-wider group-hover:text-rose-600 transition-colors">Belum Diinput</span>
+           </button>
+         </div>
+       )}
 
-          <button 
-            onClick={() => setDetailModal({ isOpen: true, type: 'belumLengkap', data: stats.belumLengkap })}
-            className="bg-white rounded-3xl p-4 border border-amber-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-amber-50/30 hover:border-amber-200 transition-all cursor-pointer group"
-          >
-            <div className="w-8 h-8 rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors flex items-center justify-center mb-2">
-              <Clock className="w-4 h-4 text-amber-500" />
-            </div>
-            <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.belumLengkap.length}</span>
-            <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Belum Lengkap</span>
-          </button>
-
-          <button 
-            onClick={() => setDetailModal({ isOpen: true, type: 'belumDiinput', data: stats.belumDiinput })}
-            className="bg-white rounded-3xl p-4 border border-rose-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-rose-50/30 hover:border-rose-200 transition-all cursor-pointer group"
-          >
-            <div className="w-8 h-8 rounded-full bg-rose-50 group-hover:bg-rose-100 transition-colors flex items-center justify-center mb-2">
-              <XCircle className="w-4 h-4 text-rose-500" />
-            </div>
-            <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.belumDiinput.length}</span>
-            <span className="text-[10px] font-bold text-rose-600/70 uppercase tracking-wider group-hover:text-rose-600 transition-colors">Belum Diinput</span>
-          </button>
-        </div>
-      )}
+       {/* Overall Stats (when no bagian selected) */}
+       {!selectedBagian && overallStats && (
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+           <div className="bg-white rounded-3xl p-4 border border-blue-50 shadow-sm flex flex-col items-center justify-center text-center">
+             <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mb-2">
+               <Users className="w-4 h-4 text-blue-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.total}</span>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Siswi</span>
+           </div>
+           <div className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center">
+             <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center mb-2">
+               <CheckCircle className="w-4 h-4 text-green-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.lengkap.length}</span>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sudah Lengkap</span>
+           </div>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'belumLengkap', data: overallStats.belumLengkap })}
+             className="bg-white rounded-3xl p-4 border border-amber-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-amber-50/30 hover:border-amber-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors flex items-center justify-center mb-2">
+               <Clock className="w-4 h-4 text-amber-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.belumLengkap.length}</span>
+             <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Belum Lengkap</span>
+           </button>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'belumDiinput', data: overallStats.belumDiinput })}
+             className="bg-white rounded-3xl p-4 border border-rose-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-rose-50/30 hover:border-rose-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-rose-50 group-hover:bg-rose-100 transition-colors flex items-center justify-center mb-2">
+               <XCircle className="w-4 h-4 text-rose-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.belumDiinput.length}</span>
+             <span className="text-[10px] font-bold text-rose-600/70 uppercase tracking-wider group-hover:text-rose-600 transition-colors">Belum Diinput</span>
+           </button>
+         </div>
+       )}
 
       {/* States Handling */}
       {loading && data.length === 0 ? (

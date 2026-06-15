@@ -3,6 +3,8 @@ import { supabase } from './lib/supabase';
 import { Search, CalendarDays, BookOpen, AlertCircle, ChevronDown, GraduationCap, Building, Loader2, Printer, ArrowLeft, Award, FileText, X } from 'lucide-react';
 import { SiswiProvider, useSiswi } from './contexts/SiswiContext';
 import { TAHUN_AJARANS } from './lib/years';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import logoSrc from './assets/logo.png';
 
 const PERIODES = ['Qobla Maulud', "Ba'da Maulud"];
@@ -349,6 +351,27 @@ function NilaiAppContent() {
     }
   };
 
+  // Export data ke Excel dengan urutan kolom dinamis
+  const exportToExcel = () => {
+    const headers = ['Nama Siswi', 'NIS', 'Bagian', ...localMapels, 'Periode', 'Tahun Ajaran'];
+    const row = [
+      selectedStudent?.nama_siswi || '',
+      selectedStudent?.nis || '',
+      selectedStudent?.bagian || '',
+      ...localMapels.map(mapel => {
+        const g = grades.find(item => item.mata_pelajaran === mapel);
+        return g ? g.nilai : '';
+      }),
+      localPeriode,
+      localTahunAjaran,
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, row]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Raport');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `RAPORT_${selectedStudent?.nis || 'SISWI'}.xlsx`);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-20 font-sans selection:bg-blue-200">
       
@@ -489,13 +512,20 @@ function NilaiAppContent() {
                 <ArrowLeft className="w-4 h-4" />
                 Kembali Cari
               </button>
-              <button 
-                onClick={handleDownload}
-                className="flex items-center gap-1.5 text-sm font-bold text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-2xl shadow transition"
-              >
-                <Printer className="w-4 h-4" />
-                Unduh Nilai
-              </button>
+              <button
+                  onClick={handleDownload}
+                  className="flex items-center gap-1.5 text-sm font-bold text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-2xl shadow transition"
+                >
+                  <Printer className="w-4 h-4" />
+                  Unduh Nilai
+                </button>
+                <button
+                  onClick={exportToExcel}
+                  className="flex items-center gap-1.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-2xl shadow transition"
+                >
+                  <FileText className="w-4 h-4" />
+                  Unduh Excel
+                </button>
             </div>
 
             {loadingGrades ? (

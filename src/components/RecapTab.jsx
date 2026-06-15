@@ -211,58 +211,66 @@ export default function RecapTab() {
   };
 
   const exportToExcel = () => {
-    // Group data by nis AND periode
-    const fullGroups = {};
+    // Gunakan daftar mapel dari context (sudah terurut sesuai created_at)
+    const mapelList = mapels.length > 0 ? mapels : [];
+
+    // Buat header: Nama Siswi | NIS | Bagian | [mapel dinamis] | Rata-Rata | Periode | Tahun Ajaran
+    const headers = [
+      'Nama Siswi',
+      'NIS',
+      'Bagian',
+      ...mapelList,
+      'Rata-Rata',
+      'Periode',
+      'Tahun Ajaran'
+    ];
+
+    // Buat object lookup: { nis -> { mata_pelajaran -> nilai } }
+    const nilaiByNis = {};
+    const periodeByNis = {};
+    const totalByNis = {}; // { nis -> { total, count } }
     data.forEach(item => {
-      const key = `${item.nis}_${item.periode}`;
-      if (!fullGroups[key]) {
-        fullGroups[key] = { 
-          nis: item.nis,
-          nama_siswi: item.nama_siswi,
-          periode: item.periode,
-          details: [], 
-          total: 0,
-          validCount: 0
-        };
+      if (!nilaiByNis[item.nis]) {
+        nilaiByNis[item.nis] = {};
+        periodeByNis[item.nis] = item.periode;
+        totalByNis[item.nis] = { total: 0, count: 0 };
       }
-      fullGroups[key].details.push(item);
+      nilaiByNis[item.nis][item.mata_pelajaran] = item.nilai < 0 ? (item.catatan || 'Tidak Hadir') : item.nilai;
       if (item.nilai >= 0) {
-        fullGroups[key].total += Number(item.nilai);
-        fullGroups[key].validCount += 1;
+        totalByNis[item.nis].total += Number(item.nilai);
+        totalByNis[item.nis].count += 1;
       }
     });
 
-    const exportData = Object.values(fullGroups).map(val => {
-      const row = {
-        "Tahun Ajaran": globalTahunAjaran,
-        "NIS": val.nis,
-        "Bagian": siswiBagianMap[val.nis] || '-',
-        "Nama Siswi": val.nama_siswi,
-        "Priode": val.periode,
-        "Rata-Rata": val.validCount > 0 ? parseFloat((val.total / val.validCount).toFixed(1)) : '-'
-      };
-      
-      // Jadikan nama mapel murni sebagai header (karena periodenya sudah ada di kolom Priode)
-      val.details.forEach(detail => {
-        row[detail.mata_pelajaran] = detail.nilai < 0 ? (detail.catatan || 'Tidak Hadir') : detail.nilai;
-      });
-      
+    // Kumpulkan semua NIS unik, lalu buat baris data
+    const allNis = Object.keys(nilaiByNis);
+    const rows = allNis.map(nis => {
+      const siswa = siswiList.find(s => s.nis === nis);
+      const rataRata = totalByNis[nis]?.count > 0
+        ? parseFloat((totalByNis[nis].total / totalByNis[nis].count).toFixed(1))
+        : '';
+      const row = [
+        siswa?.nama_siswi || data.find(d => d.nis === nis)?.nama_siswi || '',
+        nis,
+        siswiBagianMap[nis] || '-',
+        ...mapelList.map(mapel => nilaiByNis[nis]?.[mapel] ?? ''),
+        rataRata,
+        periodeByNis[nis] || globalPeriode,
+        globalTahunAjaran
+      ];
       return row;
-    }).sort((a, b) => {
-      // Sort by bagian, then name, then priode
-      if (a.Bagian === b.Bagian) {
-        if (a["Nama Siswi"] === b["Nama Siswi"]) {
-          return a.Priode.localeCompare(b.Priode);
-        }
-        return a["Nama Siswi"].localeCompare(b["Nama Siswi"]);
-      }
-      return a.Bagian.localeCompare(b.Bagian);
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Nilai Tamrin Lengkap");
-    XLSX.writeFile(workbook, "Rekap_Nilai_Tamrin.xlsx");
+    // Urutkan berdasarkan Bagian lalu Nama Siswi
+    rows.sort((a, b) => {
+      if (a[2] === b[2]) return a[0].localeCompare(b[0]);
+      return a[2].localeCompare(b[2]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Nilai Tamrin');
+    XLSX.writeFile(wb, 'Rekap_Nilai_Tamrin.xlsx');
   };
 
 

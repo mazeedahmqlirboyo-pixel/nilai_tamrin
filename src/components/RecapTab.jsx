@@ -38,18 +38,42 @@ export default function RecapTab() {
     setError(null);
     setEditingRow(null); // reset editing on fetch
     
-    const resNilai = await supabase
-      .from('nilai_tamrin')
-      .select('*')
-      .eq('periode', globalPeriode)
-      .eq('tahun_ajaran', globalTahunAjaran)
-      .eq('kategori', 'Tamrin')
-      .order('created_at', { ascending: false });
+    // Fetch ALL records using pagination to avoid Supabase's 1000-row default limit
+    const PAGE_SIZE = 1000;
+    let allData = [];
+    let from = 0;
+    let hasMore = true;
 
-    if (resNilai.error) {
-      setError(resNilai.error.message);
-    } else {
-      setData(resNilai.data || []);
+    while (hasMore) {
+      const { data: pageData, error: pageError } = await supabase
+        .from('nilai_tamrin')
+        .select('*')
+        .eq('periode', globalPeriode)
+        .eq('tahun_ajaran', globalTahunAjaran)
+        .eq('kategori', 'Tamrin')
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (pageError) {
+        setError(pageError.message);
+        hasMore = false;
+        break;
+      }
+
+      if (pageData && pageData.length > 0) {
+        allData = allData.concat(pageData);
+        from += PAGE_SIZE;
+        // If we got fewer rows than PAGE_SIZE, we've reached the end
+        if (pageData.length < PAGE_SIZE) {
+          hasMore = false;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    if (!error) {
+      setData(allData);
     }
 
     setLoading(false);

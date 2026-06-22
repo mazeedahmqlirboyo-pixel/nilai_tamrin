@@ -112,23 +112,24 @@ function NilaiAppContent() {
   }, [localTahunAjaran, localPeriode]);
 
   // Fetch student list for selected Tahun Ajaran (used when Admin Mode is active)
+  const loadStudents = async () => {
+    if (!localTahunAjaran) return;
+    setLoadingStudents(true);
+    const { data, error } = await supabase
+      .from('siswi')
+      .select('nis, nama_siswi, bagian')
+      .eq('tahun_ajaran', localTahunAjaran)
+      .order('nama_siswi');
+    if (!error && data) {
+      setStudents(data);
+    }
+    setLoadingStudents(false);
+  };
+
   useEffect(() => {
-    async function loadStudents() {
-      if (!localTahunAjaran) return;
-      if (!isAdminUnlocked) {
-        setStudents([]);
-        return;
-      }
-      setLoadingStudents(true);
-      const { data, error } = await supabase
-        .from('siswi')
-        .select('nis, nama_siswi, bagian')
-        .eq('tahun_ajaran', localTahunAjaran)
-        .order('nama_siswi');
-      if (!error && data) {
-        setStudents(data);
-      }
-      setLoadingStudents(false);
+    if (!isAdminUnlocked) {
+      setStudents([]);
+      return;
     }
     loadStudents();
   }, [localTahunAjaran, isAdminUnlocked]);

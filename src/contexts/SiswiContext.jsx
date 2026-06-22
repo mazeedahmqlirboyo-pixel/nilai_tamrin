@@ -113,7 +113,34 @@ export function SiswiProvider({ children }) {
     }
   };
 
+  const deleteSiswi = async (nis) => {
+    try {
+      const { error: errorNilai } = await supabase
+        .from('nilai_tamrin')
+        .delete()
+        .eq('nis', nis)
+        .eq('tahun_ajaran', globalTahunAjaran);
+
+      if (errorNilai) throw errorNilai;
+
+      const { error: errorSiswi } = await supabase
+        .from('siswi')
+        .delete()
+        .eq('nis', nis)
+        .eq('tahun_ajaran', globalTahunAjaran);
+
+      if (errorSiswi) throw errorSiswi;
+
+      await fetchSiswi();
+      return { success: true };
+    } catch (err) {
+      console.error("Gagal menghapus siswi:", err);
+      return { success: false, message: err.message };
+    }
+  };
+
   const fetchSiswi = async () => {
+
     setLoadingSiswi(true);
     const resSettings = await supabase
       .from('app_settings')
@@ -261,7 +288,8 @@ export function SiswiProvider({ children }) {
       isCustomMapels,
       loadingMapels,
       addMapel,
-      deleteMapel
+      deleteMapel,
+      deleteSiswi
     }}>
       {children}
     </SiswiContext.Provider>

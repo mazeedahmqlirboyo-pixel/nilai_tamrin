@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Lock, X, AlertCircle, Loader2, Upload, Trash2, Book } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -15,13 +15,17 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
     mapels,
     isCustomMapels,
     addMapel,
-    deleteMapel
+    deleteMapel,
+    deleteSiswi
   } = useSiswi();
   
   const [adminPassword, setAdminPassword] = useState('');
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState('');
+
+  // State for Searching Student to Delete
+  const [siswiSearchQuery, setSiswiSearchQuery] = useState('');
 
   // States for Delete Nilai Feature
   const [delTargetBagian, setDelTargetBagian] = useState('SEMUA');
@@ -32,6 +36,15 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
 
   // State for Managing Dynamic Mapels
   const [newMapelName, setNewMapelName] = useState('');
+
+  const filteredSiswisForDelete = useMemo(() => {
+    if (!siswiSearchQuery.trim()) return [];
+    const query = siswiSearchQuery.toLowerCase();
+    return (siswiList || []).filter(s => 
+      (s.nama_siswi && s.nama_siswi.toLowerCase().includes(query)) ||
+      (s.nis && s.nis.toLowerCase().includes(query))
+    );
+  }, [siswiList, siswiSearchQuery]);
 
   if (!showAdminModal) return null;
 
@@ -72,11 +85,38 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
     setDelTargetTahunAjaran(globalTahunAjaran || 'SEMUA');
     setDelTargetKategori('SEMUA');
     setNewMapelName('');
+    setSiswiSearchQuery('');
     // Previously the admin modal signed the user out on close, which caused unexpected logouts.
     // This behavior is removed to keep the session active after closing the admin panel.
     // if (wasUnlocked) {
     //   await supabase.auth.signOut();
     // }
+  };
+
+  const handleDeleteIndividualSiswi = async (nis, name) => {
+    const result = await window.Swal.fire({
+      title: 'Hapus Siswi?',
+      text: `Yakin ingin menghapus siswi "${name}" (NIS: ${nis}) beserta semua data nilainya secara permanen?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    });
+    if (!result.isConfirmed) return;
+
+    setAdminLoading(true);
+    setAdminError('');
+    const res = await deleteSiswi(nis);
+    setAdminLoading(false);
+    if (res.success) {
+      window.Swal.fire('Terhapus!', `Siswi "${name}" berhasil dihapus.`, 'success');
+      setSiswiSearchQuery('');
+      fetchData(); // Refresh parent recap data
+    } else {
+      setAdminError(res.message || 'Gagal menghapus siswi');
+    }
   };
 
   const handleDeleteAllSiswi = async () => {
@@ -604,6 +644,54 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Cari & Hapus Siswi Section */}
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 relative">
+              {adminLoading && <div className="absolute inset-0 bg-white/40 flex items-center justify-center backdrop-blur-[0.5px] z-10 rounded-2xl"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>}
+              <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2 mb-2">
+                <Trash2 className="w-4 h-4 text-red-500" /> Cari & Hapus Siswi
+              </h4>
+              <p className="text-[10px] text-slate-500 mb-3">
+                Cari berdasarkan nama atau NIS untuk menghapus siswi secara individual beserta seluruh nilainya.
+              </p>
+              
+              <div className="mb-3">
+                <input 
+                  type="text" 
+                  placeholder="Ketik nama atau NIS siswi..."
+                  value={siswiSearchQuery}
+                  onChange={e => setSiswiSearchQuery(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {siswiSearchQuery.trim() && (
+                <div className="max-h-36 overflow-y-auto border border-slate-100 rounded-xl p-2 bg-white space-y-1.5 custom-scrollbar">
+                  {filteredSiswisForDelete.length > 0 ? (
+                    filteredSiswisForDelete.map(s => (
+                      <div key={s.nis} className="flex justify-between items-center text-[11px] font-medium text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-200/50">
+                        <div className="flex flex-col min-w-0 pr-2">
+                          <span className="font-bold truncate">{s.nama_siswi}</span>
+                          <span className="text-[9px] text-slate-400">NIS: {s.nis} ({s.bagian || '-'})</span>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteIndividualSiswi(s.nis, s.nama_siswi)}
+                          disabled={adminLoading}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition disabled:opacity-50 flex-shrink-0"
+                          title="Hapus siswi"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-[11px] text-slate-400 text-center py-2">
+                      Siswi tidak ditemukan
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="border-t border-slate-100 pt-4 text-center mt-6">

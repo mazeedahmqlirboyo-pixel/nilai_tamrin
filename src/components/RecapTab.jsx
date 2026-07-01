@@ -333,13 +333,15 @@ export default function RecapTab() {
              <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.total}</span>
              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Siswi</span>
            </div>
-           <div className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center">
-             <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center mb-2">
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'lengkap', data: stats.lengkap })}
+             className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-green-50/30 hover:border-green-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-green-50 group-hover:bg-green-100 transition-colors flex items-center justify-center mb-2">
                <CheckCircle className="w-4 h-4 text-green-500" />
              </div>
              <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.lengkap.length}</span>
-             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sudah Lengkap</span>
-           </div>
+             <span className="text-[10px] font-bold text-green-600/70 uppercase tracking-wider group-hover:text-green-600 transition-colors">Sudah Lengkap</span>
+           </button>
            <button 
              onClick={() => setDetailModal({ isOpen: true, type: 'belumLengkap', data: stats.belumLengkap })}
              className="bg-white rounded-3xl p-4 border border-amber-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-amber-50/30 hover:border-amber-200 transition-all cursor-pointer group">
@@ -371,13 +373,15 @@ export default function RecapTab() {
              <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.total}</span>
              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Siswi</span>
            </div>
-           <div className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center">
-             <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center mb-2">
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'lengkap', data: overallStats.lengkap })}
+             className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-green-50/30 hover:border-green-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-green-50 group-hover:bg-green-100 transition-colors flex items-center justify-center mb-2">
                <CheckCircle className="w-4 h-4 text-green-500" />
              </div>
              <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.lengkap.length}</span>
-             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sudah Lengkap</span>
-           </div>
+             <span className="text-[10px] font-bold text-green-600/70 uppercase tracking-wider group-hover:text-green-600 transition-colors">Sudah Lengkap</span>
+           </button>
            <button 
              onClick={() => setDetailModal({ isOpen: true, type: 'belumLengkap', data: overallStats.belumLengkap })}
              className="bg-white rounded-3xl p-4 border border-amber-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-amber-50/30 hover:border-amber-200 transition-all cursor-pointer group">
@@ -569,13 +573,16 @@ export default function RecapTab() {
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center",
-                  detailModal.type === 'belumLengkap' ? "bg-amber-100 text-amber-600" : "bg-rose-100 text-rose-600"
+                  detailModal.type === 'belumLengkap' ? "bg-amber-100 text-amber-600" : 
+                  detailModal.type === 'lengkap' ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-600"
                 )}>
-                  {detailModal.type === 'belumLengkap' ? <Clock className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                  {detailModal.type === 'belumLengkap' ? <Clock className="w-5 h-5" /> : 
+                   detailModal.type === 'lengkap' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800 text-base leading-tight">
-                    {detailModal.type === 'belumLengkap' ? 'Belum Lengkap' : 'Belum Diinput'}
+                    {detailModal.type === 'belumLengkap' ? 'Belum Lengkap' : 
+                     detailModal.type === 'lengkap' ? 'Sudah Lengkap' : 'Belum Diinput'}
                   </h3>
                   <p className="text-xs font-medium text-slate-500">
                     {detailModal.data.length} Siswi
@@ -605,7 +612,11 @@ export default function RecapTab() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-slate-700 truncate">{student.nama_siswi}</p>
-                        <p className="text-xs font-semibold text-slate-400 mt-0.5">NIS: {student.nis}</p>
+                        <p className="text-xs font-semibold text-slate-400 mt-0.5 flex items-center gap-2">
+                          <span>NIS: {student.nis}</span>
+                          <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                          <span className="truncate">Bagian: {student.bagian || siswiBagianMap[student.nis] || '-'}</span>
+                        </p>
                       </div>
                       {detailModal.type === 'belumLengkap' && (
                         <div className="flex flex-col items-end flex-shrink-0">

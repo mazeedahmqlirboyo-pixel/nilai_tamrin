@@ -85,13 +85,16 @@ export default function RecapTab() {
     }
   }, [globalPeriode, globalTahunAjaran]);
 
+  // uniqueMapels mengikuti urutan dari tabel mata_pelajaran (sudah terurut by created_at di context)
+  // Hanya tampilkan mapel yang memang ada datanya
   const uniqueMapels = useMemo(() => {
     const mpls = new Set();
     data.forEach(d => {
       if(d.mata_pelajaran) mpls.add(d.mata_pelajaran);
     });
-    return Array.from(mpls).sort();
-  }, [data]);
+    // Urutkan sesuai urutan mapels dari context (urutan DB), bukan alfabetis
+    return mapels.filter(m => mpls.has(m));
+  }, [data, mapels]);
 
   // Process and group the raw DB records per student, filtering by selected bagian
   const groupedData = useMemo(() => {
@@ -484,7 +487,13 @@ export default function RecapTab() {
                 >
                   <div className="overflow-hidden">
                     <div className="px-3 pb-4 pt-1 space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 border-t border-slate-100 mt-1">
-                      {student.details.map((detail) => {
+                      {[...student.details].sort((a, b) => {
+                        const idxA = mapels.indexOf(a.mata_pelajaran);
+                        const idxB = mapels.indexOf(b.mata_pelajaran);
+                        const posA = idxA === -1 ? 9999 : idxA;
+                        const posB = idxB === -1 ? 9999 : idxB;
+                        return posA - posB;
+                      }).map((detail) => {
                         const isEditingThis = editingRow?.id === detail.id;
                         
                         return (

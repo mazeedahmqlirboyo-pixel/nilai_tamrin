@@ -13,7 +13,6 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
     globalPeriode, 
     globalTahunAjaran,
     mapels,
-    isCustomMapels,
     addMapel,
     deleteMapel,
     deleteSiswi
@@ -602,12 +601,12 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 relative">
               {adminLoading && <div className="absolute inset-0 bg-white/40 flex items-center justify-center backdrop-blur-[0.5px] z-10 rounded-2xl"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>}
               <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2 mb-2">
-                <Book className="w-4 h-4 text-blue-600" /> Kelola Pelajaran ({globalTahunAjaran})
+                <Book className="w-4 h-4 text-blue-600" /> Kelola Pelajaran ({globalTahunAjaran} · {globalPeriode})
               </h4>
               <p className="text-[10px] text-slate-500 mb-3">
-                {isCustomMapels 
-                  ? "✓ Menggunakan daftar mata pelajaran kustom." 
-                  : "ℹ Menggunakan daftar bawaan (11 pelajaran). Tambah/hapus untuk membuat kustom."}
+                {mapels.length > 0
+                  ? `✓ ${mapels.length} mata pelajaran terdaftar untuk periode ini.`
+                  : 'ℹ Belum ada mata pelajaran. Tambahkan di bawah.'}
               </p>
               
               {/* Add Mapel Input */}

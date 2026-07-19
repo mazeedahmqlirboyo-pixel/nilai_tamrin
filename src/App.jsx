@@ -232,7 +232,6 @@ function AppContent() {
         </div>
       )}
 
-      {/* Tahun Ajaran Password Modal */}
       {showTaModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
@@ -263,6 +262,26 @@ function AppContent() {
               placeholder="Password..."
               value={taPassword}
               onChange={(e) => setTaPassword(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key !== 'Enter' || !taPassword) return;
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                  email: 'admin@mazeeda.com',
+                  password: taPassword,
+                });
+                if (!signInError) {
+                  const success = await updateGlobalTahunAjaran(tempTa);
+                  if (success) {
+                    setShowTaModal(false);
+                    setTaPassword('');
+                    setTaError('');
+                  } else {
+                    setTaError('Gagal menyimpan ke database!');
+                  }
+                  await supabase.auth.signOut();
+                } else {
+                  setTaError(signInError.message.includes('Invalid login credentials') ? 'Password salah!' : 'Akun admin belum disetting di Supabase!');
+                }
+              }}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-4"
               autoFocus
             />
@@ -360,7 +379,6 @@ function AppContent() {
         </div>
       )}
 
-      {/* Periode Password Modal */}
       {showPeriodeModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
@@ -391,6 +409,26 @@ function AppContent() {
               placeholder="Password..."
               value={periodePassword}
               onChange={(e) => setPeriodePassword(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key !== 'Enter' || !periodePassword) return;
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                  email: 'admin@mazeeda.com',
+                  password: periodePassword,
+                });
+                if (!signInError) {
+                  const success = await updateGlobalPeriode(tempPeriode);
+                  if (success) {
+                    setShowPeriodeModal(false);
+                    setPeriodePassword('');
+                    setPeriodeError('');
+                  } else {
+                    setPeriodeError('Gagal menyimpan ke database!');
+                  }
+                  await supabase.auth.signOut();
+                } else {
+                  setPeriodeError(signInError.message.includes('Invalid login credentials') ? 'Password salah!' : 'Akun admin belum disetting di Supabase!');
+                }
+              }}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-4"
               autoFocus
             />

@@ -666,7 +666,8 @@ export default function RecapTab() {
                   
                   <div className="flex items-center gap-3">
                     <div className={cn(
-                      "font-black text-lg px-4 h-12 rounded-2xl flex items-center justify-center shadow-inner transition-colors",
+                      "font-black px-4 h-12 rounded-2xl flex items-center justify-center shadow-inner transition-colors",
+                      selectedKategori === 'Muhafadzoh' ? "text-base" : "text-lg",
                       isExpanded ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700"
                     )}>
                       {selectedKategori === 'Muhafadzoh' ? (student.bayan || '-') : student.avg}

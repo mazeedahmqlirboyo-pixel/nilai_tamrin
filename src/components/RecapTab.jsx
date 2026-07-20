@@ -140,6 +140,7 @@ export default function RecapTab() {
       nis,
       name: val.nama_siswi,
       avg: val.validCount > 0 ? (val.total / val.validCount).toFixed(1) : '-',
+      totalNadzom: val.total,
       details: val.details, // array of records
       count: val.details.length
     })).sort((a, b) => a.name.localeCompare(b.name));
@@ -234,16 +235,16 @@ export default function RecapTab() {
   };
 
   const exportToExcel = () => {
-    // Gunakan daftar mapel dari context (sudah terurut sesuai created_at)
-    const mapelList = mapels.length > 0 ? mapels : [];
+    // Gunakan daftar mapel yang aktif sesuai filter kategori saat ini (Tamrin/Ujian/Muhafadzoh)
+    const mapelList = uniqueMapels.length > 0 ? uniqueMapels : [];
 
-    // Buat header: Nama Siswi | NIS | Bagian | [mapel dinamis] | Rata-Rata | Periode | Tahun Ajaran
+    // Buat header: Nama Siswi | NIS | Bagian | [mapel dinamis] | Rata-Rata/Total | Periode | Tahun Ajaran
     const headers = [
       'Nama Siswi',
       'NIS',
       'Bagian',
       ...mapelList,
-      'Rata-Rata',
+      selectedKategori === 'Muhafadzoh' ? 'Total Bait' : 'Rata-Rata',
       'Periode',
       'Tahun Ajaran'
     ];
@@ -269,15 +270,19 @@ export default function RecapTab() {
     const allNis = Object.keys(nilaiByNis);
     const rows = allNis.map(nis => {
       const siswa = siswiList.find(s => s.nis === nis);
-      const rataRata = totalByNis[nis]?.count > 0
-        ? parseFloat((totalByNis[nis].total / totalByNis[nis].count).toFixed(1))
-        : '';
+      let summaryCol = '';
+      if (selectedKategori === 'Muhafadzoh') {
+        summaryCol = totalByNis[nis]?.total || 0;
+      } else {
+        summaryCol = totalByNis[nis]?.count > 0 ? parseFloat((totalByNis[nis].total / totalByNis[nis].count).toFixed(1)) : '';
+      }
+      
       const row = [
         siswa?.nama_siswi || data.find(d => d.nis === nis)?.nama_siswi || '',
         nis,
         siswiBagianMap[nis] || '-',
         ...mapelList.map(mapel => nilaiByNis[nis]?.[mapel] ?? ''),
-        rataRata,
+        summaryCol,
         periodeByNis[nis] || globalPeriode,
         globalTahunAjaran
       ];
@@ -361,6 +366,10 @@ export default function RecapTab() {
                 onClick={() => setSelectedKategori('Ujian')}
                 className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Ujian' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
               >Ujian</button>
+              <button 
+                onClick={() => setSelectedKategori('Muhafadzoh')}
+                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Muhafadzoh' ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+              >Muhafadzoh</button>
             </div>
           </div>
         </div>
@@ -507,10 +516,10 @@ export default function RecapTab() {
                   
                   <div className="flex items-center gap-3">
                     <div className={cn(
-                      "font-black text-lg w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner transition-colors",
-                      isExpanded ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700"
+                      "font-black text-lg px-4 h-12 rounded-2xl flex items-center justify-center shadow-inner transition-colors",
+                      isExpanded ? (selectedKategori === 'Muhafadzoh' ? "bg-purple-600 text-white" : "bg-blue-600 text-white") : (selectedKategori === 'Muhafadzoh' ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700")
                     )}>
-                      {student.avg}
+                      {selectedKategori === 'Muhafadzoh' ? `${student.totalNadzom} Bait` : student.avg}
                     </div>
                     <ChevronDown className={cn(
                       "w-5 h-5 text-slate-400 transition-transform duration-300 flex-shrink-0",
@@ -577,10 +586,17 @@ export default function RecapTab() {
                               ) : (
                                 <div className="flex items-center gap-2">
                                   <div className={cn(
-                                    "font-bold text-sm px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-100",
-                                    detail.nilai < 0 ? "text-amber-700 bg-amber-50 border-amber-100 italic" : "text-blue-700 text-base"
+                                    "font-bold text-sm px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-100 text-center",
+                                    selectedKategori === 'Muhafadzoh' ? "text-purple-700" : (detail.nilai < 0 ? "text-amber-700 bg-amber-50 border-amber-100 italic" : "text-blue-700 text-base")
                                   )}>
-                                    {detail.nilai < 0 ? (detail.catatan || 'Gak Masuk') : detail.nilai}
+                                    {selectedKategori === 'Muhafadzoh' ? (
+                                      <div>
+                                        <div className="text-base">{detail.nilai >= 0 ? `${detail.nilai} Bait` : ''}</div>
+                                        {detail.catatan && <div className="text-xs text-purple-500 font-semibold mt-0.5">{detail.catatan}</div>}
+                                      </div>
+                                    ) : (
+                                      detail.nilai < 0 ? (detail.catatan || 'Gak Masuk') : detail.nilai
+                                    )}
                                   </div>
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); startEdit(detail); }}

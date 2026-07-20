@@ -490,6 +490,102 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
     reader.readAsBinaryString(file);
   };
 
+  const handleMuhafadzohUpload = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+
+    setAdminLoading(true);
+    setAdminError('');
+    const reader = new FileReader();
+
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary', raw: true });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawData = XLSX.utils.sheet_to_json(ws);
+
+        if (rawData.length === 0) {
+          throw new Error('File Excel/CSV kosong!');
+        }
+
+        const firstRow = rawData[0];
+        const keys = Object.keys(firstRow);
+        
+        const nisKey = keys.find(k => ['nis', 'NIS', 'Nis', 'nomor_induk', 'no_induk'].includes(k.trim()));
+        const nameKey = keys.find(k => ['nama_siswi', 'Nama Siswi', 'nama'].includes(k.trim().toLowerCase()));
+        const nadzomKey = keys.find(k => k.trim().toLowerCase().includes('nadzom') || k.trim().toLowerCase().includes('perolehan'));
+        const bayanKey = keys.find(k => k.trim().toLowerCase().includes('bayan'));
+
+        if (!nisKey) throw new Error('Kolom "nis" tidak ditemukan di file Excel/CSV!');
+        if (!nadzomKey) throw new Error('Kolom "Perolehan Nadzom" tidak ditemukan!');
+        if (!bayanKey) throw new Error('Kolom "Bayan" tidak ditemukan!');
+
+        const upsertPayload = [];
+
+        rawData.forEach(row => {
+          let rNis = row[nisKey] ? String(row[nisKey]).trim() : null;
+          const rName = nameKey ? String(row[nameKey]).trim() : '';
+          
+          if (!rNis && rName) {
+            const matchedSiswi = (siswiList || []).find(s => s.nama_siswi.trim().toLowerCase() === rName.toLowerCase());
+            if (matchedSiswi) rNis = matchedSiswi.nis;
+          }
+          
+          if (!rNis) return;
+          
+          const nadzomValue = row[nadzomKey];
+          const bayanValue = row[bayanKey] ? String(row[bayanKey]).trim() : '';
+          
+          if (nadzomValue === undefined || nadzomValue === null || String(nadzomValue).trim() === '') return;
+
+          const parsedNum = Number(String(nadzomValue).replace(',', '.').trim());
+          const finalScore = isNaN(parsedNum) ? -1 : parsedNum;
+          
+          upsertPayload.push({
+            nis: rNis,
+            nama_siswi: rName || 'Siswi',
+            mata_pelajaran: 'Nadzom',
+            periode: globalPeriode,
+            tahun_ajaran: globalTahunAjaran,
+            kategori: 'Muhafadzoh',
+            nilai: finalScore,
+            catatan: finalScore === -1 ? String(nadzomValue) : bayanValue,
+            urutan: 1
+          });
+        });
+
+        if (upsertPayload.length === 0) {
+          throw new Error('Tidak ada data Muhafadzoh yang valid untuk di-upload!');
+        }
+
+        const { error: insertErr } = await supabase
+          .from('nilai_tamrin')
+          .upsert(upsertPayload, { onConflict: 'nis, mata_pelajaran, periode, tahun_ajaran, kategori' });
+
+        if (insertErr) throw new Error('Gagal simpan ke database: ' + insertErr.message);
+
+        window.Swal.fire('Upload Berhasil!', `Mengunggah ${upsertPayload.length} data Muhafadzoh untuk periode ${globalPeriode}.`, 'success');
+        handleClose();
+        e.target.value = null;
+        fetchData(); 
+
+      } catch (err) {
+        setAdminError(err.message || 'Terjadi kesalahan upload');
+      } finally {
+        setAdminLoading(false);
+      }
+    };
+
+    reader.onerror = () => {
+      setAdminError('Gagal membaca file tersebut.');
+      setAdminLoading(false);
+    };
+
+    reader.readAsBinaryString(file);
+  };
+
   const handleAddMapel = async () => {
     if (!newMapelName.trim()) return;
     setAdminLoading(true);
@@ -595,6 +691,24 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <div className="bg-emerald-600 text-white font-semibold text-sm py-2 px-4 rounded-xl shadow cursor-pointer group-hover:bg-emerald-700 transition">Pilih File Nilai Ujian</div>
+              </div>
+            </div>
+
+            {/* Muhafadzoh Upload */}
+            <div className="bg-purple-50 rounded-2xl p-4 border border-purple-100 text-center relative overflow-hidden group">
+              {adminLoading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-[1px] z-10"><Loader2 className="w-6 h-6 text-purple-600 animate-spin" /></div>}
+              <Book className="w-8 h-8 mx-auto text-purple-600 mb-2" />
+              <h4 className="font-bold text-slate-800 text-sm">Upload Nilai Muhafadzoh ({globalPeriode})</h4>
+              <p className="text-xs text-slate-500 mt-1 mb-3">Unggah CSV yang berisi NIS, Nama, Perolehan Nadzom, & Bayan.</p>
+              
+              <div className="relative">
+                <input 
+                  type="file" 
+                  accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+                  onChange={handleMuhafadzohUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div className="bg-purple-600 text-white font-semibold text-sm py-2 px-4 rounded-xl shadow cursor-pointer group-hover:bg-purple-700 transition">Pilih File Muhafadzoh</div>
               </div>
             </div>
 
@@ -769,9 +883,10 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
                     onChange={e => setDelTargetKategori(e.target.value)}
                     className="w-full bg-white border border-red-200 rounded-xl p-2.5 text-xs font-medium text-slate-700 outline-none focus:border-red-400"
                   >
-                    <option value="SEMUA">Semua Kategori (Tamrin & Ujian)</option>
+                    <option value="SEMUA">Semua Kategori (Tamrin & Ujian & Muhafadzoh)</option>
                     <option value="Tamrin">Hanya Kategori Tamrin</option>
                     <option value="Ujian">Hanya Kategori Ujian</option>
+                    <option value="Muhafadzoh">Hanya Kategori Muhafadzoh</option>
                   </select>
                 </div>
 

@@ -363,13 +363,13 @@ export default function RecapTab() {
                 className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Tamrin' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
               >Tamrin</button>
               <button 
-                onClick={() => setSelectedKategori('Ujian')}
-                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Ujian' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-              >Ujian</button>
-              <button 
                 onClick={() => setSelectedKategori('Muhafadzoh')}
                 className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Muhafadzoh' ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
               >Muhafadzoh</button>
+              <button 
+                onClick={() => setSelectedKategori('Ujian')}
+                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Ujian' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+              >Ujian</button>
             </div>
           </div>
         </div>

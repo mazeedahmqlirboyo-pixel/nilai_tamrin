@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import { CalendarDays, Book, Loader2, AlertCircle, ChevronDown, GraduationCap, Edit2, Check, X, Building, Download, Upload, Users, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { CalendarDays, Book, Loader2, AlertCircle, ChevronDown, GraduationCap, Edit2, Check, X, Building, Download, Upload, Users, CheckCircle, Clock, XCircle, Search, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useSiswi } from '../contexts/SiswiContext';
 import AdminModal from './AdminModal';
@@ -21,6 +21,7 @@ export default function RecapTab() {
   const [selectedBagian, setSelectedBagian] = useState('');
   const [localTahunAjaran, setLocalTahunAjaran] = useState(globalTahunAjaran);
   const [localPeriode, setLocalPeriode] = useState(globalPeriode);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (selectedKategori === 'Tamrin') {
@@ -77,14 +78,19 @@ export default function RecapTab() {
     let hasMore = true;
 
     while (hasMore) {
-      const { data: pageData, error: pageError } = await supabase
+    let query = supabase
         .from('nilai_tamrin')
         .select('*')
-        .eq('periode', activePeriode)
         .eq('tahun_ajaran', activeTahun)
         .eq('kategori', selectedKategori)
         .order('created_at', { ascending: false })
         .range(from, from + PAGE_SIZE - 1);
+        
+      if (selectedKategori !== 'Muhafadzoh') {
+        query = query.eq('periode', activePeriode);
+      }
+
+      const { data: pageData, error: pageError } = await query;
 
       if (pageError) {
         setError(pageError.message);
@@ -113,7 +119,8 @@ export default function RecapTab() {
         .channel('realtime:nilai_tamrin')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'nilai_tamrin' }, (payload) => {
           const updatedRecord = payload.new;
-          if (updatedRecord.periode === activePeriode && updatedRecord.tahun_ajaran === activeTahun && updatedRecord.kategori === selectedKategori) {
+          const matchPeriode = selectedKategori === 'Muhafadzoh' || updatedRecord.periode === activePeriode;
+          if (matchPeriode && updatedRecord.tahun_ajaran === activeTahun && updatedRecord.kategori === selectedKategori) {
             setData(prev => prev.map(d => d.id === updatedRecord.id ? updatedRecord : d));
           }
         })
@@ -160,6 +167,14 @@ export default function RecapTab() {
     return { nadzom, bayan };
   };
 
+  const localUniqueBagian = useMemo(() => {
+    const bgns = new Set();
+    resolvedSiswi.list.forEach(s => {
+      if (s.bagian) bgns.add(s.bagian);
+    });
+    return Array.from(bgns).sort();
+  }, [resolvedSiswi.list]);
+
   const groupedData = useMemo(() => {
     if (!selectedBagian) return [];
 
@@ -191,8 +206,9 @@ export default function RecapTab() {
         details: val.details,
         count: val.details.length
       };
-    }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [data, resolvedSiswi.map, selectedBagian, selectedKategori]);
+    }).filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [data, resolvedSiswi.map, selectedBagian, selectedKategori, searchQuery]);
 
   const stats = useMemo(() => {
     if (!selectedBagian) return null;
@@ -346,7 +362,20 @@ export default function RecapTab() {
         <div className="flex flex-col sm:flex-row gap-4 mt-4 mb-2">
           <div className="flex-1">
             <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2"><Building className="w-4 h-4 text-blue-400" /> Filter Bagian/Kelas</label>
-            <PremiumSelect value={selectedBagian} onChange={setSelectedBagian} options={uniqueBagian} placeholder="-- Pilih Bagian --" title="Pilih Bagian" icon={Building} buttonClassName="py-3 bg-slate-50 border-slate-200 text-slate-700" />
+            <PremiumSelect value={selectedBagian} onChange={setSelectedBagian} options={localUniqueBagian} placeholder="-- Pilih Bagian --" title="Pilih Bagian" icon={Building} buttonClassName="py-3 bg-slate-50 border-slate-200 text-slate-700" />
+            
+            <div className="relative mt-2">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama siswi..."
+                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl pl-9 pr-3 py-2 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 shadow-sm"
+              />
+            </div>
           </div>
           <div className="flex-1">
             <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2"><Book className="w-4 h-4 text-blue-400" /> Kategori Nilai</label>
@@ -368,20 +397,39 @@ export default function RecapTab() {
 
               {selectedKategori !== 'Tamrin' && (
                 <div className="flex gap-2 w-full animate-in slide-in-from-top-2 duration-300">
-                  <select 
-                    value={localTahunAjaran}
-                    onChange={(e) => setLocalTahunAjaran(e.target.value)}
-                    className="flex-1 bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 shadow-sm"
-                  >
-                    {TAHUN_AJARANS.map(ta => <option key={ta} value={ta}>{ta}</option>)}
-                  </select>
-                  <select 
-                    value={localPeriode}
-                    onChange={(e) => setLocalPeriode(e.target.value)}
-                    className="flex-1 bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 shadow-sm"
-                  >
-                    {PERIODES.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <CalendarDays className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <select 
+                      value={localTahunAjaran}
+                      onChange={(e) => setLocalTahunAjaran(e.target.value)}
+                      className="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-xl pl-9 pr-8 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 shadow-sm appearance-none cursor-pointer"
+                    >
+                      {TAHUN_AJARANS.map(ta => <option key={ta} value={ta}>{ta}</option>)}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    </div>
+                  </div>
+                  
+                  {selectedKategori !== 'Muhafadzoh' && (
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Clock className="w-4 h-4 text-slate-400" />
+                      </div>
+                      <select 
+                        value={localPeriode}
+                        onChange={(e) => setLocalPeriode(e.target.value)}
+                        className="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-xl pl-9 pr-8 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 shadow-sm appearance-none cursor-pointer"
+                      >
+                        {PERIODES.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

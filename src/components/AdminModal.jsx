@@ -428,7 +428,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
           
           if (!rNis) return;
 
-          subjectKeys.forEach(subjKey => {
+          subjectKeys.forEach((subjKey, subjIndex) => {
             const rawValue = row[subjKey];
             if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') return;
 
@@ -454,7 +454,8 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
               tahun_ajaran: globalTahunAjaran,
               kategori: 'Ujian',
               nilai: score,
-              catatan: notes
+              catatan: notes,
+              urutan: subjIndex
             });
           });
         });

@@ -19,6 +19,7 @@ export default function RecapTab() {
   const [error, setError] = useState(null);
   
   // States for filtering
+  const [selectedKategori, setSelectedKategori] = useState('Tamrin');
   const [selectedBagian, setSelectedBagian] = useState('');
 
   // State for which student accordion is currently open
@@ -50,7 +51,7 @@ export default function RecapTab() {
         .select('*')
         .eq('periode', globalPeriode)
         .eq('tahun_ajaran', globalTahunAjaran)
-        .eq('kategori', 'Tamrin')
+        .eq('kategori', selectedKategori)
         .order('created_at', { ascending: false })
         .range(from, from + PAGE_SIZE - 1);
 
@@ -83,17 +84,36 @@ export default function RecapTab() {
     if (globalPeriode && globalTahunAjaran) {
       fetchData();
     }
-  }, [globalPeriode, globalTahunAjaran]);
+  }, [globalPeriode, globalTahunAjaran, selectedKategori]);
 
   // uniqueMapels mengikuti urutan dari tabel mata_pelajaran (sudah terurut by created_at di context)
-  // Hanya tampilkan mapel yang memang ada datanya
+  // Untuk kategori Ujian yang mapelnya bisa dari CSV dan tidak ada di tabel mata_pelajaran,
+  // kita urutkan berdasarkan 'urutan' kolom CSV (disimpan saat upload)
   const uniqueMapels = useMemo(() => {
-    const mpls = new Set();
+    const mplsMap = new Map(); // mapel -> min urutan
     data.forEach(d => {
-      if(d.mata_pelajaran) mpls.add(d.mata_pelajaran);
+      if(d.mata_pelajaran) {
+        const urut = d.urutan !== undefined && d.urutan !== null ? d.urutan : 999;
+        if (!mplsMap.has(d.mata_pelajaran)) {
+          mplsMap.set(d.mata_pelajaran, urut);
+        } else {
+          mplsMap.set(d.mata_pelajaran, Math.min(mplsMap.get(d.mata_pelajaran), urut));
+        }
+      }
     });
-    // Urutkan sesuai urutan mapels dari context (urutan DB), bukan alfabetis
-    return mapels.filter(m => mpls.has(m));
+    
+    return Array.from(mplsMap.keys()).sort((a, b) => {
+      const idxA = mapels.indexOf(a);
+      const idxB = mapels.indexOf(b);
+      // Jika keduanya ada di master mapels, urutkan sesuai master
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      // Jika A ada di master tapi B tidak, A lebih dulu
+      if (idxA !== -1) return -1;
+      // Jika B ada di master tapi A tidak, B lebih dulu
+      if (idxB !== -1) return 1;
+      // Jika keduanya tidak ada di master (berasal dari CSV ujian), urutkan by ID insert
+      return mplsMap.get(a) - mplsMap.get(b);
+    });
   }, [data, mapels]);
 
   // Process and group the raw DB records per student, filtering by selected bagian
@@ -305,24 +325,45 @@ export default function RecapTab() {
           </div>
         </div>
 
-        <label className="text-sm font-semibold text-slate-600 mt-2 flex items-center gap-1.5 mb-2">
-          <Building className="w-4 h-4 text-blue-400" />
-          Filter Bagian/Kelas
-        </label>
-        
-        {loadingSiswi && uniqueBagian.length === 0 ? (
-          <div className="h-12 bg-slate-100 animate-pulse rounded-2xl w-full"></div>
-        ) : (
-          <PremiumSelect
-            value={selectedBagian}
-            onChange={setSelectedBagian}
-            options={uniqueBagian}
-            placeholder="-- Pilih Bagian --"
-            title="Pilih Bagian"
-            icon={Building}
-            buttonClassName="py-3 bg-slate-50 border-slate-200 text-slate-700"
-          />
-        )}
+        <div className="flex flex-col sm:flex-row gap-4 mt-4 mb-2">
+          <div className="flex-1">
+            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2">
+              <Building className="w-4 h-4 text-blue-400" />
+              Filter Bagian/Kelas
+            </label>
+            
+            {loadingSiswi && uniqueBagian.length === 0 ? (
+              <div className="h-12 bg-slate-100 animate-pulse rounded-2xl w-full"></div>
+            ) : (
+              <PremiumSelect
+                value={selectedBagian}
+                onChange={setSelectedBagian}
+                options={uniqueBagian}
+                placeholder="-- Pilih Bagian --"
+                title="Pilih Bagian"
+                icon={Building}
+                buttonClassName="py-3 bg-slate-50 border-slate-200 text-slate-700"
+              />
+            )}
+          </div>
+
+          <div className="flex-1">
+            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2">
+              <Book className="w-4 h-4 text-blue-400" />
+              Kategori Nilai
+            </label>
+            <div className="flex bg-slate-100 p-1.5 rounded-2xl h-[52px]">
+              <button 
+                onClick={() => setSelectedKategori('Tamrin')}
+                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Tamrin' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+              >Tamrin</button>
+              <button 
+                onClick={() => setSelectedKategori('Ujian')}
+                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Ujian' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+              >Ujian</button>
+            </div>
+          </div>
+        </div>
       </div>
 
        {/* Stats Monitoring Widget (per selected bagian) */}
@@ -488,11 +529,9 @@ export default function RecapTab() {
                   <div className="overflow-hidden">
                     <div className="px-3 pb-4 pt-1 space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 border-t border-slate-100 mt-1">
                       {[...student.details].sort((a, b) => {
-                        const idxA = mapels.indexOf(a.mata_pelajaran);
-                        const idxB = mapels.indexOf(b.mata_pelajaran);
-                        const posA = idxA === -1 ? 9999 : idxA;
-                        const posB = idxB === -1 ? 9999 : idxB;
-                        return posA - posB;
+                        const idxA = uniqueMapels.indexOf(a.mata_pelajaran);
+                        const idxB = uniqueMapels.indexOf(b.mata_pelajaran);
+                        return idxA - idxB;
                       }).map((detail) => {
                         const isEditingThis = editingRow?.id === detail.id;
                         

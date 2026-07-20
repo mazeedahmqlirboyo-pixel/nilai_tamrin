@@ -23,11 +23,12 @@ export default function RecapTab() {
   const [localPeriode, setLocalPeriode] = useState(globalPeriode);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Reset all filters when switching tabs (Tamrin/Muhafadzoh/Ujian)
   useEffect(() => {
-    if (selectedKategori === 'Tamrin') {
-      setLocalTahunAjaran(globalTahunAjaran);
-      setLocalPeriode(globalPeriode);
-    }
+    setLocalTahunAjaran(globalTahunAjaran);
+    setLocalPeriode(globalPeriode);
+    setSelectedBagian('');
+    setSearchQuery('');
   }, [selectedKategori, globalTahunAjaran, globalPeriode]);
 
   const activeTahun = selectedKategori === 'Tamrin' ? globalTahunAjaran : localTahunAjaran;

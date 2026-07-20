@@ -150,6 +150,28 @@ export default function RecapTab() {
     if (!selectedBagian) return null;
     
     const studentsInSection = siswiList.filter(s => s.bagian === selectedBagian);
+    
+    if (selectedKategori === 'Muhafadzoh') {
+      const jayyid = [];
+      const mutawassith = [];
+      const rodi = [];
+      const belum = [];
+      
+      studentsInSection.forEach(student => {
+        const record = groupedData.find(g => g.nis === student.nis);
+        if (!record || record.count === 0) {
+          belum.push(student);
+        } else {
+          const bayan = (record.details[0]?.catatan || '').toLowerCase();
+          if (bayan.includes('jayyid')) jayyid.push(student);
+          else if (bayan.includes('mutawasit') || bayan.includes('mutawassith')) mutawassith.push(student);
+          else if (bayan.includes('rodi') || bayan.includes("rodi'")) rodi.push(student);
+          else belum.push(student);
+        }
+      });
+      return { type: 'muhafadzoh', total: studentsInSection.length, jayyid, mutawassith, rodi, belum };
+    }
+
     const totalMapel = mapels.length;
     
     const lengkap = [];
@@ -168,8 +190,8 @@ export default function RecapTab() {
       }
     });
     
-    return { total: studentsInSection.length, lengkap, belumLengkap, belumDiinput };
-  }, [selectedBagian, siswiList, groupedData, mapels]);
+    return { type: 'default', total: studentsInSection.length, lengkap, belumLengkap, belumDiinput };
+  }, [selectedBagian, siswiList, groupedData, mapels, selectedKategori]);
 
   const overallStats = useMemo(() => {
     const totalMapel = mapels.length;
@@ -186,6 +208,27 @@ export default function RecapTab() {
       allGroups[item.nis].count += 1;
     });
 
+    if (selectedKategori === 'Muhafadzoh') {
+      const jayyid = [];
+      const mutawassith = [];
+      const rodi = [];
+      const belum = [];
+      
+      siswiList.forEach(student => {
+        const record = allGroups[student.nis];
+        if (!record || record.count === 0) {
+          belum.push(student);
+        } else {
+          const bayan = (record.bayan || '').toLowerCase();
+          if (bayan.includes('jayyid')) jayyid.push(student);
+          else if (bayan.includes('mutawasit') || bayan.includes('mutawassith')) mutawassith.push(student);
+          else if (bayan.includes('rodi') || bayan.includes("rodi'")) rodi.push(student);
+          else belum.push(student);
+        }
+      });
+      return { type: 'muhafadzoh', total: siswiList.length, jayyid, mutawassith, rodi, belum };
+    }
+
     siswiList.forEach(student => {
       const record = allGroups[student.nis];
       if (!record || record.count === 0) {
@@ -197,8 +240,8 @@ export default function RecapTab() {
       }
     });
 
-    return { total: siswiList.length, lengkap, belumLengkap, belumDiinput };
-  }, [siswiList, data, mapels]);
+    return { type: 'default', total: siswiList.length, lengkap, belumLengkap, belumDiinput };
+  }, [siswiList, data, mapels, selectedKategori]);
 
   const toggleExpand = (nis) => {
     setExpandedNis(prev => prev === nis ? null : nis);
@@ -376,7 +419,7 @@ export default function RecapTab() {
       </div>
 
        {/* Stats Monitoring Widget (per selected bagian) */}
-{selectedBagian && stats && (
+{selectedBagian && stats && stats.type === 'default' && (
   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
  
            <div className="bg-white rounded-3xl p-4 border border-blue-50 shadow-sm flex flex-col items-center justify-center text-center">
@@ -416,8 +459,48 @@ export default function RecapTab() {
          </div>
        )}
 
+{selectedBagian && stats && stats.type === 'muhafadzoh' && (
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+ 
+           <div className="bg-white rounded-3xl p-4 border border-blue-50 shadow-sm flex flex-col items-center justify-center text-center">
+             <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mb-2">
+               <Users className="w-4 h-4 text-blue-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.total}</span>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Siswi</span>
+           </div>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'jayyid', data: stats.jayyid })}
+             className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-green-50/30 hover:border-green-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-green-50 group-hover:bg-green-100 transition-colors flex items-center justify-center mb-2">
+               <CheckCircle className="w-4 h-4 text-green-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.jayyid.length}</span>
+             <span className="text-[10px] font-bold text-green-600/70 uppercase tracking-wider group-hover:text-green-600 transition-colors">Jayyid</span>
+           </button>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'mutawassith', data: stats.mutawassith })}
+             className="bg-white rounded-3xl p-4 border border-amber-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-amber-50/30 hover:border-amber-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors flex items-center justify-center mb-2">
+               <Clock className="w-4 h-4 text-amber-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.mutawassith.length}</span>
+             <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Mutawassith</span>
+           </button>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'rodi', data: stats.rodi })}
+             className="bg-white rounded-3xl p-4 border border-rose-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-rose-50/30 hover:border-rose-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-rose-50 group-hover:bg-rose-100 transition-colors flex items-center justify-center mb-2">
+               <XCircle className="w-4 h-4 text-rose-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{stats.rodi.length}</span>
+             <span className="text-[10px] font-bold text-rose-600/70 uppercase tracking-wider group-hover:text-rose-600 transition-colors">Rodi'</span>
+           </button>
+         </div>
+       )}
+
        {/* Overall Stats (when no bagian selected) */}
-       {!selectedBagian && overallStats && (
+       {!selectedBagian && overallStats && overallStats.type === 'default' && (
          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
            <div className="bg-white rounded-3xl p-4 border border-blue-50 shadow-sm flex flex-col items-center justify-center text-center">
              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mb-2">
@@ -452,6 +535,45 @@ export default function RecapTab() {
              </div>
              <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.belumDiinput.length}</span>
              <span className="text-[10px] font-bold text-rose-600/70 uppercase tracking-wider group-hover:text-rose-600 transition-colors">Belum Diinput</span>
+           </button>
+         </div>
+       )}
+
+       {!selectedBagian && overallStats && overallStats.type === 'muhafadzoh' && (
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+           <div className="bg-white rounded-3xl p-4 border border-blue-50 shadow-sm flex flex-col items-center justify-center text-center">
+             <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mb-2">
+               <Users className="w-4 h-4 text-blue-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.total}</span>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Siswi</span>
+           </div>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'jayyid', data: overallStats.jayyid })}
+             className="bg-white rounded-3xl p-4 border border-green-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-green-50/30 hover:border-green-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-green-50 group-hover:bg-green-100 transition-colors flex items-center justify-center mb-2">
+               <CheckCircle className="w-4 h-4 text-green-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.jayyid.length}</span>
+             <span className="text-[10px] font-bold text-green-600/70 uppercase tracking-wider group-hover:text-green-600 transition-colors">Jayyid</span>
+           </button>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'mutawassith', data: overallStats.mutawassith })}
+             className="bg-white rounded-3xl p-4 border border-amber-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-amber-50/30 hover:border-amber-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors flex items-center justify-center mb-2">
+               <Clock className="w-4 h-4 text-amber-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.mutawassith.length}</span>
+             <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Mutawassith</span>
+           </button>
+           <button 
+             onClick={() => setDetailModal({ isOpen: true, type: 'rodi', data: overallStats.rodi })}
+             className="bg-white rounded-3xl p-4 border border-rose-50 shadow-sm flex flex-col items-center justify-center text-center hover:bg-rose-50/30 hover:border-rose-200 transition-all cursor-pointer group">
+             <div className="w-8 h-8 rounded-full bg-rose-50 group-hover:bg-rose-100 transition-colors flex items-center justify-center mb-2">
+               <XCircle className="w-4 h-4 text-rose-500" />
+             </div>
+             <span className="text-2xl font-black text-slate-800 mb-0.5">{overallStats.rodi.length}</span>
+             <span className="text-[10px] font-bold text-rose-600/70 uppercase tracking-wider group-hover:text-rose-600 transition-colors">Rodi'</span>
            </button>
          </div>
        )}
@@ -637,16 +759,19 @@ export default function RecapTab() {
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center",
-                  detailModal.type === 'belumLengkap' ? "bg-amber-100 text-amber-600" : 
-                  detailModal.type === 'lengkap' ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-600"
+                  ['belumLengkap', 'mutawassith'].includes(detailModal.type) ? "bg-amber-100 text-amber-600" : 
+                  ['lengkap', 'jayyid'].includes(detailModal.type) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-600"
                 )}>
-                  {detailModal.type === 'belumLengkap' ? <Clock className="w-5 h-5" /> : 
-                   detailModal.type === 'lengkap' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                  {['belumLengkap', 'mutawassith'].includes(detailModal.type) ? <Clock className="w-5 h-5" /> : 
+                   ['lengkap', 'jayyid'].includes(detailModal.type) ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800 text-base leading-tight">
                     {detailModal.type === 'belumLengkap' ? 'Belum Lengkap' : 
-                     detailModal.type === 'lengkap' ? 'Sudah Lengkap' : 'Belum Diinput'}
+                     detailModal.type === 'lengkap' ? 'Sudah Lengkap' : 
+                     detailModal.type === 'jayyid' ? 'Jayyid' :
+                     detailModal.type === 'mutawassith' ? 'Mutawassith' :
+                     detailModal.type === 'rodi' ? "Rodi'" : 'Belum Diinput'}
                   </h3>
                   <p className="text-xs font-medium text-slate-500">
                     {detailModal.data.length} Siswi

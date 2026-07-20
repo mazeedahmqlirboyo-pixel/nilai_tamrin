@@ -695,9 +695,9 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
             </div>
 
             {/* Muhafadzoh Upload */}
-            <div className="bg-purple-50 rounded-2xl p-4 border border-purple-100 text-center relative overflow-hidden group">
-              {adminLoading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-[1px] z-10"><Loader2 className="w-6 h-6 text-purple-600 animate-spin" /></div>}
-              <Book className="w-8 h-8 mx-auto text-purple-600 mb-2" />
+            <div className="bg-cyan-50 rounded-2xl p-4 border border-cyan-100 text-center relative overflow-hidden group">
+              {adminLoading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-[1px] z-10"><Loader2 className="w-6 h-6 text-cyan-600 animate-spin" /></div>}
+              <Book className="w-8 h-8 mx-auto text-cyan-600 mb-2" />
               <h4 className="font-bold text-slate-800 text-sm">Upload Nilai Muhafadzoh ({globalPeriode})</h4>
               <p className="text-xs text-slate-500 mt-1 mb-3">Unggah CSV yang berisi NIS, Nama, Perolehan Nadzom, & Bayan.</p>
               
@@ -708,7 +708,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
                   onChange={handleMuhafadzohUpload}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <div className="bg-purple-600 text-white font-semibold text-sm py-2 px-4 rounded-xl shadow cursor-pointer group-hover:bg-purple-700 transition">Pilih File Muhafadzoh</div>
+                <div className="bg-cyan-600 text-white font-semibold text-sm py-2 px-4 rounded-xl shadow cursor-pointer group-hover:bg-cyan-700 transition">Pilih File Muhafadzoh</div>
               </div>
             </div>
 

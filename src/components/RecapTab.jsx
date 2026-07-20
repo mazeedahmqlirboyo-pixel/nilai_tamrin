@@ -364,7 +364,7 @@ export default function RecapTab() {
               >Tamrin</button>
               <button 
                 onClick={() => setSelectedKategori('Muhafadzoh')}
-                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Muhafadzoh' ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Muhafadzoh' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
               >Muhafadzoh</button>
               <button 
                 onClick={() => setSelectedKategori('Ujian')}
@@ -517,7 +517,7 @@ export default function RecapTab() {
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "font-black text-lg px-4 h-12 rounded-2xl flex items-center justify-center shadow-inner transition-colors",
-                      isExpanded ? (selectedKategori === 'Muhafadzoh' ? "bg-purple-600 text-white" : "bg-blue-600 text-white") : (selectedKategori === 'Muhafadzoh' ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700")
+                      isExpanded ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700"
                     )}>
                       {selectedKategori === 'Muhafadzoh' ? `${student.totalNadzom} Bait` : student.avg}
                     </div>
@@ -587,12 +587,12 @@ export default function RecapTab() {
                                 <div className="flex items-center gap-2">
                                   <div className={cn(
                                     "font-bold text-sm px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-100 text-center",
-                                    selectedKategori === 'Muhafadzoh' ? "text-purple-700" : (detail.nilai < 0 ? "text-amber-700 bg-amber-50 border-amber-100 italic" : "text-blue-700 text-base")
+                                    selectedKategori === 'Muhafadzoh' ? "text-blue-700" : (detail.nilai < 0 ? "text-amber-700 bg-amber-50 border-amber-100 italic" : "text-blue-700 text-base")
                                   )}>
                                     {selectedKategori === 'Muhafadzoh' ? (
                                       <div>
                                         <div className="text-base">{detail.nilai >= 0 ? `${detail.nilai} Bait` : ''}</div>
-                                        {detail.catatan && <div className="text-xs text-purple-500 font-semibold mt-0.5">{detail.catatan}</div>}
+                                        {detail.catatan && <div className="text-xs text-blue-500 font-semibold mt-0.5">{detail.catatan}</div>}
                                       </div>
                                     ) : (
                                       detail.nilai < 0 ? (detail.catatan || 'Gak Masuk') : detail.nilai

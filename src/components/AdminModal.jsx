@@ -22,6 +22,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState('');
+  const [muhafadzohMapelName, setMuhafadzohMapelName] = useState('');
 
   // State for Searching Student to Delete
   const [siswiSearchQuery, setSiswiSearchQuery] = useState('');
@@ -550,7 +551,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
           upsertPayload.push({
             nis: rNis,
             nama_siswi: rName || 'Siswi',
-            mata_pelajaran: 'Nadzom',
+            mata_pelajaran: muhafadzohMapelName.trim() || 'Nadzom',
             periode: globalPeriode,
             tahun_ajaran: globalTahunAjaran,
             kategori: 'Muhafadzoh',
@@ -702,17 +703,28 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
             <div className="bg-cyan-50 rounded-2xl p-4 border border-cyan-100 text-center relative overflow-hidden group">
               {adminLoading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-[1px] z-10"><Loader2 className="w-6 h-6 text-cyan-600 animate-spin" /></div>}
               <Book className="w-8 h-8 mx-auto text-cyan-600 mb-2" />
-              <h4 className="font-bold text-slate-800 text-sm">Upload Nilai Muhafadzoh ({globalPeriode})</h4>
-              <p className="text-xs text-slate-500 mt-1 mb-3">Unggah CSV yang berisi NIS, Nama, Perolehan Nadzom, & Bayan.</p>
+              <h4 className="font-bold text-slate-800 text-sm">Upload Muhafadzoh ({globalPeriode})</h4>
+              <p className="text-xs text-slate-500 mt-1 mb-3">Kolom berisi `Perolehan Nadzom` (bisa angka/KHATAM) & `Bayan` (JAYYID, dsb).</p>
               
+              <div className="mb-3 text-left">
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Pelajaran Muhafadzoh (Opsional):</label>
+                <input 
+                  type="text" 
+                  value={muhafadzohMapelName}
+                  onChange={(e) => setMuhafadzohMapelName(e.target.value)}
+                  placeholder="Misal: Tasrif Istilahi (Default: Nadzom)"
+                  className="w-full bg-white border border-cyan-200 text-slate-700 text-xs rounded-xl px-3 py-2 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                />
+              </div>
+
               <div className="relative">
                 <input 
                   type="file" 
                   accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
                   onChange={handleMuhafadzohUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
-                <div className="bg-cyan-600 text-white font-semibold text-sm py-2 px-4 rounded-xl shadow cursor-pointer group-hover:bg-cyan-700 transition">Pilih File Muhafadzoh</div>
+                <div className="bg-cyan-600 text-white font-semibold text-sm py-2 px-4 rounded-xl shadow group-hover:bg-cyan-700 transition relative z-0">Pilih File Muhafadzoh</div>
               </div>
             </div>
 

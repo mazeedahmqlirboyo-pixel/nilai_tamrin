@@ -178,6 +178,33 @@ export default function RecapTab() {
     return { nadzom, bayan };
   };
 
+  const calculateWorstBayan = (details) => {
+    if (!details || details.length === 0) return '';
+    let worst = 3; // 3: Jayyid, 2: Mutawassith, 1: Rodi', 0: unknown
+    let found = false;
+    let firstBayan = '';
+    details.forEach(d => {
+      const bText = parseMuhafadzoh(d).bayan;
+      if (!firstBayan && bText) firstBayan = bText;
+      const b = bText.toLowerCase();
+      if (b.includes('jayyid')) {
+        worst = Math.min(worst, 3);
+        found = true;
+      } else if (b.includes('mutawasit') || b.includes('mutawassith')) {
+        worst = Math.min(worst, 2);
+        found = true;
+      } else if (b.includes('rodi') || b.includes("rodi'")) {
+        worst = Math.min(worst, 1);
+        found = true;
+      }
+    });
+    if (!found) return firstBayan; // fallback if words don't match
+    if (worst === 1) return "Rodi'";
+    if (worst === 2) return "Mutawassith";
+    if (worst === 3) return "Jayyid";
+    return '';
+  };
+
   const localUniqueBagian = useMemo(() => {
     const bgns = new Set();
     resolvedSiswi.list.forEach(s => {
@@ -206,8 +233,8 @@ export default function RecapTab() {
 
     return Object.entries(groups).map(([nis, val]) => {
       let bayanText = '';
-      if (selectedKategori === 'Muhafadzoh' && val.details[0]) {
-         bayanText = parseMuhafadzoh(val.details[0]).bayan;
+      if (selectedKategori === 'Muhafadzoh' && val.details.length > 0) {
+         bayanText = calculateWorstBayan(val.details);
       }
       return {
         nis,
@@ -263,7 +290,7 @@ export default function RecapTab() {
         const record = allGroups[student.nis];
         if (!record || record.count === 0) belum.push(student);
         else {
-          const bayan = parseMuhafadzoh(record.items[0]).bayan.toLowerCase();
+          const bayan = calculateWorstBayan(record.items).toLowerCase();
           if (bayan.includes('jayyid')) jayyid.push(student);
           else if (bayan.includes('mutawasit') || bayan.includes('mutawassith')) mutawassith.push(student);
           else if (bayan.includes('rodi') || bayan.includes("rodi'")) rodi.push(student);
@@ -343,8 +370,12 @@ export default function RecapTab() {
     const rows = targetSiswis.map(siswa => {
       const nis = siswa.nis;
       let summaryCol = '';
-      if (selectedKategori === 'Muhafadzoh') summaryCol = nilaiByNis[nis]?.['BAYAN'] || '';
-      else summaryCol = totalByNis[nis]?.count > 0 ? parseFloat((totalByNis[nis].total / totalByNis[nis].count).toFixed(1)) : '';
+      if (selectedKategori === 'Muhafadzoh') {
+        const studentRecord = groupedData.find(g => g.nis === nis);
+        summaryCol = studentRecord ? studentRecord.bayan : '';
+      } else {
+        summaryCol = totalByNis[nis]?.count > 0 ? parseFloat((totalByNis[nis].total / totalByNis[nis].count).toFixed(1)) : '';
+      }
       return [siswa.nama_siswi, nis, resolvedSiswi.map[nis] || '-', ...mapelCells(nis), summaryCol, periodeByNis[nis] || activePeriode, activeTahun];
     });
 
@@ -737,11 +768,16 @@ export default function RecapTab() {
                                     "font-bold text-sm px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-100 text-center",
                                     selectedKategori === 'Muhafadzoh' ? "text-blue-700" : (detail.nilai < 0 ? "text-amber-700 bg-amber-50 border-amber-100 italic" : "text-blue-700 text-base")
                                   )}>
-                                    {(() => {
+                                     {(() => {
                                       if (selectedKategori === 'Muhafadzoh') {
                                         const p = parseMuhafadzoh(detail);
-                                        const isNum = typeof p.nadzom === 'number' || (!isNaN(p.nadzom) && p.nadzom !== '');
-                                        return <div className="text-base">{p.nadzom}{isNum ? ' Bait' : ''}</div>;
+                                        const isNum = typeof p.nadzom === 'number' || (!isNaN(p.nadzom) && String(p.nadzom).trim() !== '');
+                                        return (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-base font-bold">{p.nadzom}{isNum ? ' Bait' : ''}</span>
+                                            {p.bayan && <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">{p.bayan}</span>}
+                                          </div>
+                                        );
                                       }
                                       return detail.nilai < 0 ? (detail.catatan || 'Gak Masuk') : detail.nilai;
                                     })()}

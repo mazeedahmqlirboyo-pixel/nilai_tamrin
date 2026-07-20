@@ -7,6 +7,9 @@ import AdminModal from './AdminModal';
 import PremiumSelect from './PremiumSelect';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { TAHUN_AJARANS } from '../lib/years';
+
+const PERIODES = ['Qobla Maulud', "Ba'da Maulud"];
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -14,32 +17,60 @@ function cn(...inputs) {
 
 export default function RecapTab() {
   const { siswiBagianMap, uniqueBagian, loadingSiswi, globalPeriode, globalTahunAjaran, siswiList, mapels } = useSiswi();
+  const [selectedKategori, setSelectedKategori] = useState('Tamrin');
+  const [selectedBagian, setSelectedBagian] = useState('');
+  const [localTahunAjaran, setLocalTahunAjaran] = useState(globalTahunAjaran);
+  const [localPeriode, setLocalPeriode] = useState(globalPeriode);
+
+  useEffect(() => {
+    if (selectedKategori === 'Tamrin') {
+      setLocalTahunAjaran(globalTahunAjaran);
+      setLocalPeriode(globalPeriode);
+    }
+  }, [selectedKategori, globalTahunAjaran, globalPeriode]);
+
+  const activeTahun = selectedKategori === 'Tamrin' ? globalTahunAjaran : localTahunAjaran;
+  const activePeriode = selectedKategori === 'Tamrin' ? globalPeriode : localPeriode;
+
+  const [resolvedSiswi, setResolvedSiswi] = useState({ list: [], map: {} });
+  
+  useEffect(() => {
+    if (activeTahun === globalTahunAjaran) {
+      setResolvedSiswi({ list: siswiList, map: siswiBagianMap });
+    }
+  }, [siswiList, siswiBagianMap, activeTahun, globalTahunAjaran]);
+
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // States for filtering
-  const [selectedKategori, setSelectedKategori] = useState('Tamrin');
-  const [selectedBagian, setSelectedBagian] = useState('');
 
-  // State for which student accordion is currently open
   const [expandedNis, setExpandedNis] = useState(null);
-  
   const [editingRow, setEditingRow] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
-
-  // Admin Modal States
   const [showAdminModal, setShowAdminModal] = useState(false);
-
-  // Detail Modal States for monitoring widget
   const [detailModal, setDetailModal] = useState({ isOpen: false, type: '', data: [] });
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    setEditingRow(null); // reset editing on fetch
+    setEditingRow(null);
+
+    if (activeTahun !== globalTahunAjaran) {
+      const { data: siswiData, error: siswiErr } = await supabase
+        .from('siswi')
+        .select('nis, nama_siswi, bagian')
+        .eq('tahun_ajaran', activeTahun)
+        .order('nama_siswi');
+      
+      if (!siswiErr && siswiData) {
+        const map = {};
+        siswiData.forEach(s => map[s.nis] = s.bagian);
+        setResolvedSiswi({ list: siswiData, map });
+      } else {
+        setResolvedSiswi({ list: [], map: {} });
+      }
+    }
     
-    // Fetch ALL records using pagination to avoid Supabase's 1000-row default limit
     const PAGE_SIZE = 1000;
     let allData = [];
     let from = 0;
@@ -49,8 +80,8 @@ export default function RecapTab() {
       const { data: pageData, error: pageError } = await supabase
         .from('nilai_tamrin')
         .select('*')
-        .eq('periode', globalPeriode)
-        .eq('tahun_ajaran', globalTahunAjaran)
+        .eq('periode', activePeriode)
+        .eq('tahun_ajaran', activeTahun)
         .eq('kategori', selectedKategori)
         .order('created_at', { ascending: false })
         .range(from, from + PAGE_SIZE - 1);
@@ -64,54 +95,54 @@ export default function RecapTab() {
       if (pageData && pageData.length > 0) {
         allData = allData.concat(pageData);
         from += PAGE_SIZE;
-        // If we got fewer rows than PAGE_SIZE, we've reached the end
-        if (pageData.length < PAGE_SIZE) {
-          hasMore = false;
-        }
+        if (pageData.length < PAGE_SIZE) hasMore = false;
       } else {
         hasMore = false;
       }
     }
 
-    if (!error) {
-      setData(allData);
-    }
-
+    if (!error) setData(allData);
     setLoading(false);
   };
 
   useEffect(() => {
-    if (globalPeriode && globalTahunAjaran) {
+    if (activePeriode && activeTahun) {
       fetchData();
-    }
-  }, [globalPeriode, globalTahunAjaran, selectedKategori]);
+      
+      const channel = supabase
+        .channel('realtime:nilai_tamrin')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'nilai_tamrin' }, (payload) => {
+          const updatedRecord = payload.new;
+          if (updatedRecord.periode === activePeriode && updatedRecord.tahun_ajaran === activeTahun && updatedRecord.kategori === selectedKategori) {
+            setData(prev => prev.map(d => d.id === updatedRecord.id ? updatedRecord : d));
+          }
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'nilai_tamrin' }, (payload) => {
+          const oldRecord = payload.old;
+          setData(prev => prev.filter(d => d.id !== oldRecord.id));
+        })
+        .subscribe();
 
-  // uniqueMapels mengikuti urutan dari tabel mata_pelajaran (sudah terurut by created_at di context)
-  // Untuk kategori Ujian yang mapelnya bisa dari CSV dan tidak ada di tabel mata_pelajaran,
-  // kita urutkan berdasarkan 'urutan' kolom CSV (disimpan saat upload)
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [activePeriode, activeTahun, selectedKategori]);
+
   const uniqueMapels = useMemo(() => {
-    const mplsMap = new Map(); // mapel -> min urutan
+    const mplsMap = new Map();
     data.forEach(d => {
       if(d.mata_pelajaran) {
         const urut = d.urutan !== undefined && d.urutan !== null ? d.urutan : 999;
-        if (!mplsMap.has(d.mata_pelajaran)) {
-          mplsMap.set(d.mata_pelajaran, urut);
-        } else {
-          mplsMap.set(d.mata_pelajaran, Math.min(mplsMap.get(d.mata_pelajaran), urut));
-        }
+        if (!mplsMap.has(d.mata_pelajaran)) mplsMap.set(d.mata_pelajaran, urut);
+        else mplsMap.set(d.mata_pelajaran, Math.min(mplsMap.get(d.mata_pelajaran), urut));
       }
     });
     
     return Array.from(mplsMap.keys()).sort((a, b) => {
       const idxA = mapels.indexOf(a);
       const idxB = mapels.indexOf(b);
-      // Jika keduanya ada di master mapels, urutkan sesuai master
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      // Jika A ada di master tapi B tidak, A lebih dulu
       if (idxA !== -1) return -1;
-      // Jika B ada di master tapi A tidak, B lebih dulu
       if (idxB !== -1) return 1;
-      // Jika keduanya tidak ada di master (berasal dari CSV ujian), urutkan by ID insert
       return mplsMap.get(a) - mplsMap.get(b);
     });
   }, [data, mapels]);
@@ -129,13 +160,12 @@ export default function RecapTab() {
     return { nadzom, bayan };
   };
 
-  // Process and group the raw DB records per student, filtering by selected bagian
   const groupedData = useMemo(() => {
-    if (!selectedBagian) return []; // If no bagian selected, don't show anyone
+    if (!selectedBagian) return [];
 
     const groups = {};
     data.forEach(item => {
-      const bgn = siswiBagianMap[item.nis];
+      const bgn = resolvedSiswi.map[item.nis];
       if (bgn === selectedBagian) {
         if (!groups[item.nis]) {
           groups[item.nis] = { nama_siswi: item.nama_siswi, details: [], total: 0, validCount: 0 };
@@ -148,7 +178,6 @@ export default function RecapTab() {
       }
     });
 
-    // Convert object to array, calculate average, and sort alphabetically
     return Object.entries(groups).map(([nis, val]) => {
       let bayanText = '';
       if (selectedKategori === 'Muhafadzoh' && val.details[0]) {
@@ -159,28 +188,21 @@ export default function RecapTab() {
         name: val.nama_siswi,
         avg: val.validCount > 0 ? (val.total / val.validCount).toFixed(1) : '-',
         bayan: bayanText,
-        details: val.details, // array of records
+        details: val.details,
         count: val.details.length
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [data, siswiBagianMap, selectedBagian, selectedKategori]);
+  }, [data, resolvedSiswi.map, selectedBagian, selectedKategori]);
 
   const stats = useMemo(() => {
     if (!selectedBagian) return null;
-    
-    const studentsInSection = siswiList.filter(s => s.bagian === selectedBagian);
-    
+    const siswiBagian = resolvedSiswi.list.filter(s => s.bagian === selectedBagian);
     if (selectedKategori === 'Muhafadzoh') {
-      const jayyid = [];
-      const mutawassith = [];
-      const rodi = [];
-      const belum = [];
-      
-      studentsInSection.forEach(student => {
+      const jayyid = [], mutawassith = [], rodi = [], belum = [];
+      siswiBagian.forEach(student => {
         const record = groupedData.find(g => g.nis === student.nis);
-        if (!record || record.count === 0) {
-          belum.push(student);
-        } else {
+        if (!record || record.count === 0) belum.push(student);
+        else {
           const bayan = record.bayan.toLowerCase();
           if (bayan.includes('jayyid')) jayyid.push(student);
           else if (bayan.includes('mutawasit') || bayan.includes('mutawassith')) mutawassith.push(student);
@@ -188,57 +210,32 @@ export default function RecapTab() {
           else belum.push(student);
         }
       });
-      return { type: 'muhafadzoh', total: studentsInSection.length, jayyid, mutawassith, rodi, belum };
+      return { type: 'muhafadzoh', total: siswiBagian.length, jayyid, mutawassith, rodi, belum };
     }
-
-    const totalMapel = mapels.length;
-    
-    const lengkap = [];
-    const belumLengkap = [];
-    const belumDiinput = [];
-    
-    studentsInSection.forEach(student => {
+    const lengkap = [], belumLengkap = [], belumDiinput = [];
+    siswiBagian.forEach(student => {
       const record = groupedData.find(g => g.nis === student.nis);
-      
-      if (!record || record.count === 0) {
-        belumDiinput.push(student);
-      } else if (record.count < totalMapel) {
-        belumLengkap.push({ ...student, count: record.count, totalMapel });
-      } else {
-        lengkap.push(student);
-      }
+      if (!record || record.count === 0) belumDiinput.push(student);
+      else if (record.count < uniqueMapels.length) belumLengkap.push({ ...student, count: record.count, totalMapel: uniqueMapels.length });
+      else lengkap.push(student);
     });
-    
-    return { type: 'default', total: studentsInSection.length, lengkap, belumLengkap, belumDiinput };
-  }, [selectedBagian, siswiList, groupedData, mapels, selectedKategori]);
+    return { type: 'default', total: siswiBagian.length, lengkap, belumLengkap, belumDiinput };
+  }, [selectedBagian, resolvedSiswi.list, groupedData, uniqueMapels, selectedKategori]);
 
   const overallStats = useMemo(() => {
-    const totalMapel = mapels.length;
-    const lengkap = [];
-    const belumLengkap = [];
-    const belumDiinput = [];
-
-    // Helper for grouped data regardless of filter
+    if (selectedBagian) return null;
     const allGroups = {};
     data.forEach(item => {
-      if (!allGroups[item.nis]) {
-        allGroups[item.nis] = { count: 0, items: [] };
-      }
+      if (!allGroups[item.nis]) allGroups[item.nis] = { count: 0, items: [] };
       allGroups[item.nis].count += 1;
       allGroups[item.nis].items.push(item);
     });
-
     if (selectedKategori === 'Muhafadzoh') {
-      const jayyid = [];
-      const mutawassith = [];
-      const rodi = [];
-      const belum = [];
-      
-      siswiList.forEach(student => {
+      const belum = [], jayyid = [], mutawassith = [], rodi = [];
+      resolvedSiswi.list.forEach(student => {
         const record = allGroups[student.nis];
-        if (!record || record.count === 0) {
-          belum.push(student);
-        } else {
+        if (!record || record.count === 0) belum.push(student);
+        else {
           const bayan = parseMuhafadzoh(record.items[0]).bayan.toLowerCase();
           if (bayan.includes('jayyid')) jayyid.push(student);
           else if (bayan.includes('mutawasit') || bayan.includes('mutawassith')) mutawassith.push(student);
@@ -246,26 +243,21 @@ export default function RecapTab() {
           else belum.push(student);
         }
       });
-      return { type: 'muhafadzoh', total: siswiList.length, jayyid, mutawassith, rodi, belum };
+      return { type: 'muhafadzoh', total: resolvedSiswi.list.length, jayyid, mutawassith, rodi, belum };
     }
-
-    siswiList.forEach(student => {
+    const lengkap = [], belumLengkap = [], belumDiinput = [];
+    resolvedSiswi.list.forEach(student => {
       const record = allGroups[student.nis];
-      if (!record || record.count === 0) {
-        belumDiinput.push(student);
-      } else if (record.count < totalMapel) {
-        belumLengkap.push({ ...student, count: record.count, totalMapel });
-      } else {
-        lengkap.push(student);
-      }
+      if (!record || record.count === 0) belumDiinput.push(student);
+      else if (record.count < uniqueMapels.length) belumLengkap.push(student);
+      else lengkap.push(student);
     });
-
-    return { type: 'default', total: siswiList.length, lengkap, belumLengkap, belumDiinput };
-  }, [siswiList, data, mapels, selectedKategori]);
+    return { type: 'default', total: resolvedSiswi.list.length, lengkap, belumLengkap, belumDiinput };
+  }, [data, resolvedSiswi.list, uniqueMapels, selectedBagian, selectedKategori]);
 
   const toggleExpand = (nis) => {
     setExpandedNis(prev => prev === nis ? null : nis);
-    setEditingRow(null); // Cancel any active edits when swapping accordion
+    setEditingRow(null);
   };
 
   const startEdit = (detail) => {
@@ -274,55 +266,35 @@ export default function RecapTab() {
 
   const handleUpdate = async (id) => {
     if (!editingRow || editingRow.value === '') return;
-    
     setIsUpdating(true);
     const normalizedVal = String(editingRow.value).replace(',', '.');
     const { error: updErr } = await supabase
       .from('nilai_tamrin')
-      .update({ 
-        nilai: parseFloat(normalizedVal),
-        catatan: null // Clear note when new numeric score is entered
-      })
+      .update({ nilai: parseFloat(normalizedVal), catatan: null })
       .eq('id', id);
-
     setIsUpdating(false);
-
     if (updErr) {
       console.error(updErr);
       window.Swal.fire('Gagal!', 'Gagal update nilai: ' + updErr.message, 'error');
     } else {
-      // Modify local data immediately so we don't have to refetch all
       setData(prev => prev.map(item => item.id === id ? { ...item, nilai: parseFloat(normalizedVal), catatan: null } : item));
       setEditingRow(null);
     }
   };
 
   const exportToExcel = () => {
-    // Gunakan daftar mapel yang aktif sesuai filter kategori saat ini (Tamrin/Ujian/Muhafadzoh)
     const mapelList = uniqueMapels.length > 0 ? uniqueMapels : [];
-
-    // Buat header: Nama Siswi | NIS | Bagian | [mapel dinamis] | Rata-Rata/Total | Periode | Tahun Ajaran
-    const headers = [
-      'Nama Siswi',
-      'NIS',
-      'Bagian',
-      ...mapelList,
-      selectedKategori === 'Muhafadzoh' ? 'Bayan' : 'Rata-Rata',
-      'Periode',
-      'Tahun Ajaran'
-    ];
-
-    // Buat object lookup: { nis -> { mata_pelajaran -> nilai } }
+    const targetSiswis = selectedBagian ? resolvedSiswi.list.filter(s => s.bagian === selectedBagian) : resolvedSiswi.list;
+    const headers = ['Nama Siswi', 'NIS', 'Bagian', ...mapelList, selectedKategori === 'Muhafadzoh' ? 'Bayan' : 'Rata-Rata', 'Periode', 'Tahun Ajaran'];
     const nilaiByNis = {};
     const periodeByNis = {};
-    const totalByNis = {}; // { nis -> { total, count } }
+    const totalByNis = {};
     data.forEach(item => {
       if (!nilaiByNis[item.nis]) {
         nilaiByNis[item.nis] = {};
         periodeByNis[item.nis] = item.periode;
         totalByNis[item.nis] = { total: 0, count: 0 };
       }
-      
       if (selectedKategori === 'Muhafadzoh') {
          const p = parseMuhafadzoh(item);
          nilaiByNis[item.nis][item.mata_pelajaran] = p.nadzom;
@@ -330,117 +302,88 @@ export default function RecapTab() {
       } else {
          nilaiByNis[item.nis][item.mata_pelajaran] = item.nilai < 0 ? (item.catatan || 'Tidak Hadir') : item.nilai;
       }
-
       if (item.nilai >= 0) {
         totalByNis[item.nis].total += Number(item.nilai);
         totalByNis[item.nis].count += 1;
       }
     });
 
-    // Kumpulkan semua NIS unik, lalu buat baris data
-    const allNis = Object.keys(nilaiByNis);
-    const rows = allNis.map(nis => {
-      const siswa = siswiList.find(s => s.nis === nis);
+    const mapelCells = (nis) => mapelList.map(mapel => {
+      const val = nilaiByNis[nis]?.[mapel];
+      return val !== undefined && val !== null ? val : '';
+    });
+
+    const rows = targetSiswis.map(siswa => {
+      const nis = siswa.nis;
       let summaryCol = '';
-      if (selectedKategori === 'Muhafadzoh') {
-        summaryCol = nilaiByNis[nis]?.['BAYAN'] || '';
-      } else {
-        summaryCol = totalByNis[nis]?.count > 0 ? parseFloat((totalByNis[nis].total / totalByNis[nis].count).toFixed(1)) : '';
-      }
-      
-      const row = [
-        siswa?.nama_siswi || data.find(d => d.nis === nis)?.nama_siswi || '',
-        nis,
-        siswiBagianMap[nis] || '-',
-        ...mapelList.map(mapel => nilaiByNis[nis]?.[mapel] ?? ''),
-        summaryCol,
-        periodeByNis[nis] || globalPeriode,
-        globalTahunAjaran
-      ];
-      return row;
+      if (selectedKategori === 'Muhafadzoh') summaryCol = nilaiByNis[nis]?.['BAYAN'] || '';
+      else summaryCol = totalByNis[nis]?.count > 0 ? parseFloat((totalByNis[nis].total / totalByNis[nis].count).toFixed(1)) : '';
+      return [siswa.nama_siswi, nis, resolvedSiswi.map[nis] || '-', ...mapelCells(nis), summaryCol, periodeByNis[nis] || activePeriode, activeTahun];
     });
 
-    // Urutkan berdasarkan Bagian lalu Nama Siswi
-    rows.sort((a, b) => {
-      if (a[2] === b[2]) return a[0].localeCompare(b[0]);
-      return a[2].localeCompare(b[2]);
-    });
-
+    rows.sort((a, b) => (a[2] === b[2] ? a[0].localeCompare(b[0]) : a[2].localeCompare(b[2])));
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Nilai Tamrin');
-    XLSX.writeFile(wb, 'Rekap_Nilai_Tamrin.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Nilai');
+    XLSX.writeFile(wb, 'Rekap_Nilai.xlsx');
   };
-
 
   return (
     <div className="space-y-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
-      {/* Header & Filter Card */}
       <div className="bg-white rounded-3xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-blue-50/50">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-800">Rekap Nilai Siswi</h2>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={exportToExcel} 
-              className="text-sm font-semibold text-green-700 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full hover:bg-green-100 transition-colors flex items-center gap-1.5"
-              title="Unduh semua riwayat nilai ke Excel"
-              disabled={data.length === 0}
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Excel</span>
+            <button onClick={exportToExcel} className="text-sm font-semibold text-green-700 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full hover:bg-green-100 transition-colors flex items-center gap-1.5" disabled={data.length === 0}>
+              <Download className="w-4 h-4" /> <span className="hidden sm:inline">Excel</span>
             </button>
-            <button 
-              onClick={() => setShowAdminModal(true)} 
-              className="text-sm font-semibold text-blue-600 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full hover:bg-blue-100 transition-colors flex items-center gap-1.5"
-              title="Upload master data CSV baru"
-            >
-              <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Upload CSV</span>
+            <button onClick={() => setShowAdminModal(true)} className="text-sm font-semibold text-blue-600 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full hover:bg-blue-100 transition-colors flex items-center gap-1.5">
+              <Upload className="w-4 h-4" /> <span className="hidden sm:inline">Upload CSV</span>
             </button>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mt-4 mb-2">
           <div className="flex-1">
-            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2">
-              <Building className="w-4 h-4 text-blue-400" />
-              Filter Bagian/Kelas
-            </label>
-            
-            {loadingSiswi && uniqueBagian.length === 0 ? (
-              <div className="h-12 bg-slate-100 animate-pulse rounded-2xl w-full"></div>
-            ) : (
-              <PremiumSelect
-                value={selectedBagian}
-                onChange={setSelectedBagian}
-                options={uniqueBagian}
-                placeholder="-- Pilih Bagian --"
-                title="Pilih Bagian"
-                icon={Building}
-                buttonClassName="py-3 bg-slate-50 border-slate-200 text-slate-700"
-              />
-            )}
+            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2"><Building className="w-4 h-4 text-blue-400" /> Filter Bagian/Kelas</label>
+            <PremiumSelect value={selectedBagian} onChange={setSelectedBagian} options={uniqueBagian} placeholder="-- Pilih Bagian --" title="Pilih Bagian" icon={Building} buttonClassName="py-3 bg-slate-50 border-slate-200 text-slate-700" />
           </div>
-
           <div className="flex-1">
-            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2">
-              <Book className="w-4 h-4 text-blue-400" />
-              Kategori Nilai
-            </label>
-            <div className="flex bg-slate-100 p-1.5 rounded-2xl h-[52px]">
-              <button 
-                onClick={() => setSelectedKategori('Tamrin')}
-                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Tamrin' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-              >Tamrin</button>
-              <button 
-                onClick={() => setSelectedKategori('Muhafadzoh')}
-                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Muhafadzoh' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-              >Muhafadzoh</button>
-              <button 
-                onClick={() => setSelectedKategori('Ujian')}
-                className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Ujian' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-              >Ujian</button>
+            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2"><Book className="w-4 h-4 text-blue-400" /> Kategori Nilai</label>
+            <div className="flex flex-col gap-2">
+              <div className="flex bg-slate-100 p-1.5 rounded-2xl h-[52px]">
+                <button 
+                  onClick={() => setSelectedKategori('Tamrin')}
+                  className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Tamrin' ? "bg-white text-blue-600 shadow-md ring-1 ring-black/5" : "text-slate-500 hover:text-slate-700")}
+                >Tamrin</button>
+                <button 
+                  onClick={() => setSelectedKategori('Muhafadzoh')}
+                  className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Muhafadzoh' ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "text-slate-500 hover:text-slate-700")}
+                >Muhafadzoh</button>
+                <button 
+                  onClick={() => setSelectedKategori('Ujian')}
+                  className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Ujian' ? "bg-emerald-500 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:text-slate-700")}
+                >Ujian</button>
+              </div>
+
+              {selectedKategori !== 'Tamrin' && (
+                <div className="flex gap-2 w-full animate-in slide-in-from-top-2 duration-300">
+                  <select 
+                    value={localTahunAjaran}
+                    onChange={(e) => setLocalTahunAjaran(e.target.value)}
+                    className="flex-1 bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 shadow-sm"
+                  >
+                    {TAHUN_AJARANS.map(ta => <option key={ta} value={ta}>{ta}</option>)}
+                  </select>
+                  <select 
+                    value={localPeriode}
+                    onChange={(e) => setLocalPeriode(e.target.value)}
+                    className="flex-1 bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 shadow-sm"
+                  >
+                    {PERIODES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         </div>

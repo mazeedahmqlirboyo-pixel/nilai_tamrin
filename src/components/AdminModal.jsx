@@ -541,7 +541,11 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
           if (nadzomValue === undefined || nadzomValue === null || String(nadzomValue).trim() === '') return;
 
           const parsedNum = Number(String(nadzomValue).replace(',', '.').trim());
-          const finalScore = isNaN(parsedNum) ? -1 : parsedNum;
+          const isNum = !isNaN(parsedNum) && String(nadzomValue).trim() !== '';
+          const finalScore = isNum ? parsedNum : -1;
+          
+          const nadzomText = isNum ? '' : String(nadzomValue).trim();
+          const finalCatatan = `${nadzomText}|||${bayanValue}`;
           
           upsertPayload.push({
             nis: rNis,
@@ -551,7 +555,7 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
             tahun_ajaran: globalTahunAjaran,
             kategori: 'Muhafadzoh',
             nilai: finalScore,
-            catatan: finalScore === -1 ? String(nadzomValue) : bayanValue,
+            catatan: finalCatatan,
             urutan: 1
           });
         });

@@ -116,6 +116,19 @@ export default function RecapTab() {
     });
   }, [data, mapels]);
 
+  const parseMuhafadzoh = (item) => {
+    let nadzom = item.nilai >= 0 ? item.nilai : '';
+    let bayan = '';
+    if (item.catatan && item.catatan.includes('|||')) {
+      const parts = item.catatan.split('|||');
+      if (item.nilai < 0) nadzom = parts[0];
+      bayan = parts[1];
+    } else {
+      if (item.nilai < 0) nadzom = item.catatan;
+    }
+    return { nadzom, bayan };
+  };
+
   // Process and group the raw DB records per student, filtering by selected bagian
   const groupedData = useMemo(() => {
     if (!selectedBagian) return []; // If no bagian selected, don't show anyone
@@ -136,15 +149,21 @@ export default function RecapTab() {
     });
 
     // Convert object to array, calculate average, and sort alphabetically
-    return Object.entries(groups).map(([nis, val]) => ({
-      nis,
-      name: val.nama_siswi,
-      avg: val.validCount > 0 ? (val.total / val.validCount).toFixed(1) : '-',
-      totalNadzom: val.total,
-      details: val.details, // array of records
-      count: val.details.length
-    })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [data, siswiBagianMap, selectedBagian]);
+    return Object.entries(groups).map(([nis, val]) => {
+      let bayanText = '';
+      if (selectedKategori === 'Muhafadzoh' && val.details[0]) {
+         bayanText = parseMuhafadzoh(val.details[0]).bayan;
+      }
+      return {
+        nis,
+        name: val.nama_siswi,
+        avg: val.validCount > 0 ? (val.total / val.validCount).toFixed(1) : '-',
+        bayan: bayanText,
+        details: val.details, // array of records
+        count: val.details.length
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+  }, [data, siswiBagianMap, selectedBagian, selectedKategori]);
 
   const stats = useMemo(() => {
     if (!selectedBagian) return null;
@@ -162,7 +181,7 @@ export default function RecapTab() {
         if (!record || record.count === 0) {
           belum.push(student);
         } else {
-          const bayan = (record.details[0]?.catatan || '').toLowerCase();
+          const bayan = record.bayan.toLowerCase();
           if (bayan.includes('jayyid')) jayyid.push(student);
           else if (bayan.includes('mutawasit') || bayan.includes('mutawassith')) mutawassith.push(student);
           else if (bayan.includes('rodi') || bayan.includes("rodi'")) rodi.push(student);
@@ -203,9 +222,10 @@ export default function RecapTab() {
     const allGroups = {};
     data.forEach(item => {
       if (!allGroups[item.nis]) {
-        allGroups[item.nis] = { count: 0 };
+        allGroups[item.nis] = { count: 0, items: [] };
       }
       allGroups[item.nis].count += 1;
+      allGroups[item.nis].items.push(item);
     });
 
     if (selectedKategori === 'Muhafadzoh') {
@@ -219,7 +239,7 @@ export default function RecapTab() {
         if (!record || record.count === 0) {
           belum.push(student);
         } else {
-          const bayan = (record.bayan || '').toLowerCase();
+          const bayan = parseMuhafadzoh(record.items[0]).bayan.toLowerCase();
           if (bayan.includes('jayyid')) jayyid.push(student);
           else if (bayan.includes('mutawasit') || bayan.includes('mutawassith')) mutawassith.push(student);
           else if (bayan.includes('rodi') || bayan.includes("rodi'")) rodi.push(student);
@@ -287,7 +307,7 @@ export default function RecapTab() {
       'NIS',
       'Bagian',
       ...mapelList,
-      selectedKategori === 'Muhafadzoh' ? 'Total Bait' : 'Rata-Rata',
+      selectedKategori === 'Muhafadzoh' ? 'Bayan' : 'Rata-Rata',
       'Periode',
       'Tahun Ajaran'
     ];
@@ -302,7 +322,15 @@ export default function RecapTab() {
         periodeByNis[item.nis] = item.periode;
         totalByNis[item.nis] = { total: 0, count: 0 };
       }
-      nilaiByNis[item.nis][item.mata_pelajaran] = item.nilai < 0 ? (item.catatan || 'Tidak Hadir') : item.nilai;
+      
+      if (selectedKategori === 'Muhafadzoh') {
+         const p = parseMuhafadzoh(item);
+         nilaiByNis[item.nis][item.mata_pelajaran] = p.nadzom;
+         nilaiByNis[item.nis]['BAYAN'] = p.bayan;
+      } else {
+         nilaiByNis[item.nis][item.mata_pelajaran] = item.nilai < 0 ? (item.catatan || 'Tidak Hadir') : item.nilai;
+      }
+
       if (item.nilai >= 0) {
         totalByNis[item.nis].total += Number(item.nilai);
         totalByNis[item.nis].count += 1;
@@ -315,7 +343,7 @@ export default function RecapTab() {
       const siswa = siswiList.find(s => s.nis === nis);
       let summaryCol = '';
       if (selectedKategori === 'Muhafadzoh') {
-        summaryCol = totalByNis[nis]?.total || 0;
+        summaryCol = nilaiByNis[nis]?.['BAYAN'] || '';
       } else {
         summaryCol = totalByNis[nis]?.count > 0 ? parseFloat((totalByNis[nis].total / totalByNis[nis].count).toFixed(1)) : '';
       }
@@ -641,7 +669,7 @@ export default function RecapTab() {
                       "font-black text-lg px-4 h-12 rounded-2xl flex items-center justify-center shadow-inner transition-colors",
                       isExpanded ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700"
                     )}>
-                      {selectedKategori === 'Muhafadzoh' ? `${student.totalNadzom} Bait` : student.avg}
+                      {selectedKategori === 'Muhafadzoh' ? (student.bayan || '-') : student.avg}
                     </div>
                     <ChevronDown className={cn(
                       "w-5 h-5 text-slate-400 transition-transform duration-300 flex-shrink-0",
@@ -711,14 +739,14 @@ export default function RecapTab() {
                                     "font-bold text-sm px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-100 text-center",
                                     selectedKategori === 'Muhafadzoh' ? "text-blue-700" : (detail.nilai < 0 ? "text-amber-700 bg-amber-50 border-amber-100 italic" : "text-blue-700 text-base")
                                   )}>
-                                    {selectedKategori === 'Muhafadzoh' ? (
-                                      <div>
-                                        <div className="text-base">{detail.nilai >= 0 ? `${detail.nilai} Bait` : ''}</div>
-                                        {detail.catatan && <div className="text-xs text-blue-500 font-semibold mt-0.5">{detail.catatan}</div>}
-                                      </div>
-                                    ) : (
-                                      detail.nilai < 0 ? (detail.catatan || 'Gak Masuk') : detail.nilai
-                                    )}
+                                    {(() => {
+                                      if (selectedKategori === 'Muhafadzoh') {
+                                        const p = parseMuhafadzoh(detail);
+                                        const isNum = typeof p.nadzom === 'number' || (!isNaN(p.nadzom) && p.nadzom !== '');
+                                        return <div className="text-base">{p.nadzom}{isNum ? ' Bait' : ''}</div>;
+                                      }
+                                      return detail.nilai < 0 ? (detail.catatan || 'Gak Masuk') : detail.nilai;
+                                    })()}
                                   </div>
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); startEdit(detail); }}

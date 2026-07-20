@@ -361,23 +361,6 @@ export default function RecapTab() {
 
         <div className="flex flex-col sm:flex-row gap-4 mt-4 mb-2">
           <div className="flex-1">
-            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2"><Building className="w-4 h-4 text-blue-400" /> Filter Bagian/Kelas</label>
-            <PremiumSelect value={selectedBagian} onChange={setSelectedBagian} options={localUniqueBagian} placeholder="-- Pilih Bagian --" title="Pilih Bagian" icon={Building} buttonClassName="py-3 bg-slate-50 border-slate-200 text-slate-700" />
-            
-            <div className="relative mt-2">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="w-4 h-4 text-slate-400" />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama siswi..."
-                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl pl-9 pr-3 py-2 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 shadow-sm"
-              />
-            </div>
-          </div>
-          <div className="flex-1">
             <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2"><Book className="w-4 h-4 text-blue-400" /> Kategori Nilai</label>
             <div className="flex flex-col gap-2">
               <div className="flex bg-slate-100 p-1.5 rounded-2xl h-[52px]">
@@ -432,6 +415,24 @@ export default function RecapTab() {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+          
+          <div className="flex-1">
+            <label className="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2"><Building className="w-4 h-4 text-blue-400" /> Filter Bagian/Kelas</label>
+            <PremiumSelect value={selectedBagian} onChange={setSelectedBagian} options={localUniqueBagian} placeholder="-- Pilih Bagian --" title="Pilih Bagian" icon={Building} buttonClassName="py-3 bg-slate-50 border-slate-200 text-slate-700" />
+            
+            <div className="relative mt-2">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama siswi..."
+                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl pl-9 pr-3 py-2 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 shadow-sm"
+              />
             </div>
           </div>
         </div>

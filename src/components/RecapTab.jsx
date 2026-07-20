@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { CalendarDays, Book, Loader2, AlertCircle, ChevronDown, GraduationCap, Edit2, Check, X, Building, Download, Upload, Users, CheckCircle, Clock, XCircle, Search, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -52,7 +52,11 @@ export default function RecapTab() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [detailModal, setDetailModal] = useState({ isOpen: false, type: '', data: [] });
 
+  const fetchIdRef = useRef(0);
+
   const fetchData = async () => {
+    const fetchId = ++fetchIdRef.current;
+    
     setLoading(true);
     setError(null);
     setEditingRow(null);
@@ -64,6 +68,8 @@ export default function RecapTab() {
         .eq('tahun_ajaran', activeTahun)
         .order('nama_siswi');
       
+      if (fetchId !== fetchIdRef.current) return;
+
       if (!siswiErr && siswiData) {
         const map = {};
         siswiData.forEach(s => map[s.nis] = s.bagian);
@@ -93,6 +99,8 @@ export default function RecapTab() {
 
       const { data: pageData, error: pageError } = await query;
 
+      if (fetchId !== fetchIdRef.current) return;
+
       if (pageError) {
         setError(pageError.message);
         hasMore = false;
@@ -107,6 +115,8 @@ export default function RecapTab() {
         hasMore = false;
       }
     }
+
+    if (fetchId !== fetchIdRef.current) return;
 
     if (!error) setData(allData);
     setLoading(false);
@@ -177,12 +187,12 @@ export default function RecapTab() {
   }, [resolvedSiswi.list]);
 
   const groupedData = useMemo(() => {
-    if (!selectedBagian) return [];
+    if (!selectedBagian && !searchQuery.trim()) return [];
 
     const groups = {};
     data.forEach(item => {
       const bgn = resolvedSiswi.map[item.nis];
-      if (bgn === selectedBagian) {
+      if (!selectedBagian || bgn === selectedBagian) {
         if (!groups[item.nis]) {
           groups[item.nis] = { nama_siswi: item.nama_siswi, details: [], total: 0, validCount: 0 };
         }
@@ -266,7 +276,7 @@ export default function RecapTab() {
     resolvedSiswi.list.forEach(student => {
       const record = allGroups[student.nis];
       if (!record || record.count === 0) belumDiinput.push(student);
-      else if (record.count < uniqueMapels.length) belumLengkap.push(student);
+      else if (record.count < uniqueMapels.length) belumLengkap.push({ ...student, count: record.count, totalMapel: uniqueMapels.length });
       else lengkap.push(student);
     });
     return { type: 'default', total: resolvedSiswi.list.length, lengkap, belumLengkap, belumDiinput };
@@ -371,47 +381,41 @@ export default function RecapTab() {
                 >Tamrin</button>
                 <button 
                   onClick={() => setSelectedKategori('Muhafadzoh')}
-                  className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Muhafadzoh' ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "text-slate-500 hover:text-slate-700")}
+                  className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Muhafadzoh' ? "bg-white text-blue-600 shadow-md ring-1 ring-black/5" : "text-slate-500 hover:text-slate-700")}
                 >Muhafadzoh</button>
                 <button 
                   onClick={() => setSelectedKategori('Ujian')}
-                  className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Ujian' ? "bg-emerald-500 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:text-slate-700")}
+                  className={cn("flex-1 text-sm font-bold rounded-xl transition-all", selectedKategori === 'Ujian' ? "bg-white text-blue-600 shadow-md ring-1 ring-black/5" : "text-slate-500 hover:text-slate-700")}
                 >Ujian</button>
               </div>
 
               {selectedKategori !== 'Tamrin' && (
                 <div className="flex gap-2 w-full animate-in slide-in-from-top-2 duration-300">
-                  <div className="relative flex-1">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <CalendarDays className="w-4 h-4 text-slate-400" />
-                    </div>
-                    <select 
+                  <div className="flex-1">
+                    <PremiumSelect
                       value={localTahunAjaran}
-                      onChange={(e) => setLocalTahunAjaran(e.target.value)}
-                      className="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-xl pl-9 pr-8 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 shadow-sm appearance-none cursor-pointer"
-                    >
-                      {TAHUN_AJARANS.map(ta => <option key={ta} value={ta}>{ta}</option>)}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
-                    </div>
+                      onChange={setLocalTahunAjaran}
+                      options={TAHUN_AJARANS}
+                      placeholder="Tahun Ajaran"
+                      title="Pilih Tahun Ajaran"
+                      icon={CalendarDays}
+                      buttonClassName="py-2.5 bg-white border-slate-200 text-slate-700 shadow-sm"
+                      activeBgClass="bg-white border-slate-200 text-slate-700"
+                    />
                   </div>
                   
                   {selectedKategori !== 'Muhafadzoh' && (
-                    <div className="relative flex-1">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Clock className="w-4 h-4 text-slate-400" />
-                      </div>
-                      <select 
+                    <div className="flex-1">
+                      <PremiumSelect
                         value={localPeriode}
-                        onChange={(e) => setLocalPeriode(e.target.value)}
-                        className="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-xl pl-9 pr-8 py-2 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 shadow-sm appearance-none cursor-pointer"
-                      >
-                        {PERIODES.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <ChevronDown className="w-4 h-4 text-slate-400" />
-                      </div>
+                        onChange={setLocalPeriode}
+                        options={PERIODES}
+                        placeholder="Periode"
+                        title="Pilih Periode"
+                        icon={Clock}
+                        buttonClassName="py-2.5 bg-white border-slate-200 text-slate-700 shadow-sm"
+                        activeBgClass="bg-white border-slate-200 text-slate-700"
+                      />
                     </div>
                   )}
                 </div>
@@ -610,13 +614,13 @@ export default function RecapTab() {
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <p className="text-sm">{error}</p>
         </div>
-      ) : !selectedBagian ? (
+      ) : !selectedBagian && !searchQuery.trim() ? (
         <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-sm opacity-80">
           <div className="w-16 h-16 bg-blue-50 text-blue-300 rounded-full flex items-center justify-center mx-auto mb-4">
             <Book className="w-8 h-8" />
           </div>
-          <h3 className="text-slate-700 font-semibold mb-1">Pilih Bagian</h3>
-          <p className="text-sm text-slate-500 px-4">Silakan pilih bagian di atas terlebih dahulu untuk memunculkan daftar nilai siswi.</p>
+          <h3 className="text-slate-700 font-semibold mb-1">Pilih Bagian / Cari Siswi</h3>
+          <p className="text-sm text-slate-500 px-4">Silakan pilih bagian di atas atau cari nama siswi untuk memunculkan daftar nilai.</p>
         </div>
       ) : groupedData.length === 0 ? (
         <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-sm">
@@ -624,7 +628,7 @@ export default function RecapTab() {
             <Book className="w-8 h-8" />
           </div>
           <h3 className="text-slate-700 font-semibold mb-1">Belum Ada Data</h3>
-          <p className="text-sm text-slate-500">Tidak ada riwayat nilai untuk siswi di Bagian '{selectedBagian}'.</p>
+          <p className="text-sm text-slate-500">Tidak ada riwayat nilai untuk pencarian / filter ini.</p>
         </div>
       ) : (
         <div className="space-y-3">

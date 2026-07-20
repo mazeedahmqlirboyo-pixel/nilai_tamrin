@@ -22,7 +22,6 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState('');
-  const [muhafadzohMapelName, setMuhafadzohMapelName] = useState('');
 
   // State for Searching Student to Delete
   const [siswiSearchQuery, setSiswiSearchQuery] = useState('');
@@ -505,64 +504,109 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
         const wb = XLSX.read(bstr, { type: 'binary', raw: true });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rawData = XLSX.utils.sheet_to_json(ws);
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-        if (rawData.length === 0) {
-          throw new Error('File Excel/CSV kosong!');
+        if (rawData.length < 2) {
+          throw new Error('File Excel/CSV kosong atau format tidak sesuai!');
         }
 
-        const firstRow = rawData[0];
-        const keys = Object.keys(firstRow);
-        
-        const nisKey = keys.find(k => ['nis', 'NIS', 'Nis', 'nomor_induk', 'no_induk'].includes(k.trim()));
-        const nameKey = keys.find(k => ['nama_siswi', 'Nama Siswi', 'nama'].includes(k.trim().toLowerCase()));
-        const nadzomKey = keys.find(k => k.trim().toLowerCase().includes('nadzom') || k.trim().toLowerCase().includes('perolehan'));
-        const bayanKey = keys.find(k => k.trim().toLowerCase().includes('bayan'));
+        let headerRowIndex = -1;
+        let nisColIndex = -1;
+        let namaColIndex = -1;
 
-        if (!nisKey) throw new Error('Kolom "nis" tidak ditemukan di file Excel/CSV!');
-        if (!nadzomKey) throw new Error('Kolom "Perolehan Nadzom" tidak ditemukan!');
-        if (!bayanKey) throw new Error('Kolom "Bayan" tidak ditemukan!');
+        for (let i = 0; i < Math.min(10, rawData.length); i++) {
+          const row = rawData[i];
+          if (!row) continue;
+          for (let j = 0; j < row.length; j++) {
+            const cell = String(row[j] || '').trim().toLowerCase();
+            if (cell === 'nis') {
+              headerRowIndex = i;
+              nisColIndex = j;
+              break;
+            }
+          }
+          if (headerRowIndex !== -1) {
+            for (let j = 0; j < row.length; j++) {
+              const cell = String(row[j] || '').trim().toLowerCase();
+              if (cell === 'nama' || cell === 'nama siswi') {
+                namaColIndex = j;
+                break;
+              }
+            }
+            break;
+          }
+        }
+
+        if (headerRowIndex === -1 || nisColIndex === -1) {
+          throw new Error('Kolom "NIS" tidak ditemukan di baris judul Excel!');
+        }
+
+        const headerRow = rawData[headerRowIndex];
+        const subjects = []; 
+        
+        for (let j = nisColIndex + 1; j < headerRow.length; j++) {
+          const cell = String(headerRow[j] || '').trim();
+          const cellLower = cell.toLowerCase();
+          
+          if (!cell || cellLower.includes('perolehan') || cellLower === 'bayan' || cellLower === 'domisili') {
+            continue;
+          }
+          
+          if (j + 1 < headerRow.length) {
+             subjects.push({ name: cell, nadzomCol: j, bayanCol: j + 1 });
+             j++; // skip the next column which is the Bayan column
+          }
+        }
+
+        if (subjects.length === 0) {
+           throw new Error('Gagal mendeteksi nama pelajaran Muhafadzoh. Pastikan format tabel sesuai.');
+        }
 
         const upsertPayload = [];
 
-        rawData.forEach(row => {
-          let rNis = row[nisKey] ? String(row[nisKey]).trim() : null;
-          const rName = nameKey ? String(row[nameKey]).trim() : '';
-          
+        for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+          const row = rawData[i];
+          if (!row || row.length === 0) continue;
+
+          let rNis = row[nisColIndex] ? String(row[nisColIndex]).trim() : null;
+          const rName = (namaColIndex !== -1 && row[namaColIndex]) ? String(row[namaColIndex]).trim() : '';
+
           if (!rNis && rName) {
             const matchedSiswi = (siswiList || []).find(s => s.nama_siswi.trim().toLowerCase() === rName.toLowerCase());
             if (matchedSiswi) rNis = matchedSiswi.nis;
           }
-          
-          if (!rNis) return;
-          
-          const nadzomValue = row[nadzomKey];
-          const bayanValue = row[bayanKey] ? String(row[bayanKey]).trim() : '';
-          
-          if (nadzomValue === undefined || nadzomValue === null || String(nadzomValue).trim() === '') return;
 
-          const parsedNum = Number(String(nadzomValue).replace(',', '.').trim());
-          const isNum = !isNaN(parsedNum) && String(nadzomValue).trim() !== '';
-          const finalScore = isNum ? parsedNum : -1;
-          
-          const nadzomText = isNum ? '' : String(nadzomValue).trim();
-          const finalCatatan = `${nadzomText}|||${bayanValue}`;
-          
-          upsertPayload.push({
-            nis: rNis,
-            nama_siswi: rName || 'Siswi',
-            mata_pelajaran: muhafadzohMapelName.trim() || 'Nadzom',
-            periode: globalPeriode,
-            tahun_ajaran: globalTahunAjaran,
-            kategori: 'Muhafadzoh',
-            nilai: finalScore,
-            catatan: finalCatatan,
-            urutan: 1
+          if (!rNis || String(rNis).toLowerCase() === 'nis') continue;
+
+          subjects.forEach((subj, idx) => {
+            const nadzomValue = row[subj.nadzomCol];
+            const bayanValue = row[subj.bayanCol] ? String(row[subj.bayanCol]).trim() : '';
+            
+            if (nadzomValue === undefined || nadzomValue === null || String(nadzomValue).trim() === '') return;
+
+            const parsedNum = Number(String(nadzomValue).replace(',', '.').trim());
+            const isNum = !isNaN(parsedNum) && String(nadzomValue).trim() !== '';
+            const finalScore = isNum ? parsedNum : -1;
+            
+            const nadzomText = isNum ? '' : String(nadzomValue).trim();
+            const finalCatatan = `${nadzomText}|||${bayanValue}`;
+            
+            upsertPayload.push({
+              nis: rNis,
+              nama_siswi: rName || 'Siswi',
+              mata_pelajaran: subj.name,
+              periode: globalPeriode,
+              tahun_ajaran: globalTahunAjaran,
+              kategori: 'Muhafadzoh',
+              nilai: finalScore,
+              catatan: finalCatatan,
+              urutan: idx + 1
+            });
           });
-        });
+        }
 
         if (upsertPayload.length === 0) {
-          throw new Error('Tidak ada data Muhafadzoh yang valid untuk di-upload!');
+          throw new Error('Tidak ada baris data Muhafadzoh yang valid untuk di-upload!');
         }
 
         const { error: insertErr } = await supabase
@@ -704,19 +748,8 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
               {adminLoading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-[1px] z-10"><Loader2 className="w-6 h-6 text-cyan-600 animate-spin" /></div>}
               <Book className="w-8 h-8 mx-auto text-cyan-600 mb-2" />
               <h4 className="font-bold text-slate-800 text-sm">Upload Muhafadzoh ({globalPeriode})</h4>
-              <p className="text-xs text-slate-500 mt-1 mb-3">Kolom berisi `Perolehan Nadzom` (bisa angka/KHATAM) & `Bayan` (JAYYID, dsb).</p>
+              <p className="text-xs text-slate-500 mt-1 mb-3">Otomatis membaca Multi-Kitab dari baris sub-judul.</p>
               
-              <div className="mb-3 text-left">
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Pelajaran Muhafadzoh (Opsional):</label>
-                <input 
-                  type="text" 
-                  value={muhafadzohMapelName}
-                  onChange={(e) => setMuhafadzohMapelName(e.target.value)}
-                  placeholder="Misal: Tasrif Istilahi (Default: Nadzom)"
-                  className="w-full bg-white border border-cyan-200 text-slate-700 text-xs rounded-xl px-3 py-2 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                />
-              </div>
-
               <div className="relative">
                 <input 
                   type="file" 

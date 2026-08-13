@@ -31,8 +31,8 @@ export default function RecapTab() {
     setSearchQuery('');
   }, [selectedKategori, globalTahunAjaran, globalPeriode]);
 
-  const activeTahun = selectedKategori === 'Tamrin' ? globalTahunAjaran : localTahunAjaran;
-  const activePeriode = selectedKategori === 'Tamrin' ? globalPeriode : localPeriode;
+  const activeTahun = localTahunAjaran;
+  const activePeriode = localPeriode;
 
   const [resolvedSiswi, setResolvedSiswi] = useState({ list: [], map: {} });
   
@@ -420,7 +420,6 @@ export default function RecapTab() {
                 >Ujian</button>
               </div>
 
-              {selectedKategori !== 'Tamrin' && (
                 <div className="flex gap-2 w-full animate-in slide-in-from-top-2 duration-300">
                   <div className="flex-1">
                     <PremiumSelect
@@ -450,7 +449,6 @@ export default function RecapTab() {
                     </div>
                   )}
                 </div>
-              )}
             </div>
           </div>
           

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from './lib/supabase';
 import { AlertCircle, Loader2, Lock } from 'lucide-react';
-import logoSrc from './assets/logo.png';
+import logoSrc from './assets/512 Logo.png';
 
 const EMAIL = 'ayahmazeeda32@gmail.com';
 

@@ -5,7 +5,7 @@ import { SiswiProvider, useSiswi } from './contexts/SiswiContext';
 import { TAHUN_AJARANS } from './lib/years';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import logoSrc from './assets/logo.png';
+import logoSrc from './assets/512 Logo.png';
 
 const PERIODES = ['Qobla Maulud', "Ba'da Maulud"];
 const DEFAULT_MAPELS = [

@@ -3,7 +3,7 @@ import { BookOpen, Search, Save, List, CheckCircle2, ChevronDown, User, Calendar
 import { supabase } from './lib/supabase';
 import InputTab from './components/InputTab';
 import RecapTab from './components/RecapTab';
-import logoSrc from './assets/logo.png';
+import logoSrc from './assets/512 Logo.png';
 import { SiswiProvider, useSiswi } from './contexts/SiswiContext';
 import { TAHUN_AJARANS } from './lib/years';
 

@@ -20,5 +20,6 @@
 @layer base {
   body {
     @apply bg-blue-50 text-slate-800 font-sans antialiased;
+    overscroll-behavior-y: none; /* Disable pull-to-refresh on Android/TWA */
   }
 }

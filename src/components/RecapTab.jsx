@@ -862,16 +862,16 @@ export default function RecapTab() {
                         {idx + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-slate-700 truncate flex items-center gap-2">
+                        <p className="font-bold text-sm text-slate-700 truncate">
                           {student.nama_siswi}
-                          {student.isBoyong && (
-                            <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-md border border-red-200">BOYONG</span>
-                          )}
                         </p>
-                        <p className="text-xs font-semibold text-slate-400 mt-0.5 flex items-center gap-2">
+                        <p className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-2">
                           <span>NIS: {student.nis}</span>
                           <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                           <span className="truncate">Bagian: {student.bagian || siswiBagianMap[student.nis] || '-'}</span>
+                          {student.isBoyong && (
+                            <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100 ml-1">BOYONG</span>
+                          )}
                         </p>
                       </div>
                       {detailModal.type === 'belumLengkap' && (

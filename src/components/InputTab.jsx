@@ -113,14 +113,15 @@ export default function InputTab() {
   const handleSave = () => {
     const isNilaiValid = isAbsent ? true : (nilai !== null);
     const isCatatanValid = isAbsent ? (catatan && catatan.trim() !== '') : true;
+    const isMapelValid = (isAbsent && catatan === 'BOYONG') ? true : !!mapel;
 
-    if (!periode || !selectedNis || !mapel || !isNilaiValid || !isCatatanValid) {
+    if (!periode || !selectedNis || !isMapelValid || !isNilaiValid || !isCatatanValid) {
       setNotification({ type: 'error', message: 'Lengkapi semua data sebelum menyimpan!' });
       setTimeout(() => setNotification(null), 3000);
       return;
     }
 
-    if (gradedSiswis.includes(selectedNis)) {
+    if (!isAbsent && gradedSiswis.includes(selectedNis)) {
       setShowConfirmModal(true);
     } else {
       executeSave();
@@ -132,20 +133,39 @@ export default function InputTab() {
     setIsSubmitting(true);
     setNotification(null);
 
-    const { error } = await supabase
-      .from('nilai_tamrin')
-      .upsert({
+    let error = null;
+
+    if (isAbsent && catatan === 'BOYONG') {
+      const payload = mapels.map((m, idx) => ({
         nis: selectedNis,
         nama_siswi: selectedSiswi?.nama_siswi,
-        mata_pelajaran: mapel,
+        mata_pelajaran: m,
         periode: periode,
         tahun_ajaran: globalTahunAjaran,
         kategori: 'Tamrin',
-        nilai: isAbsent ? -1 : nilai,
-        catatan: isAbsent ? catatan.trim() : null
-      }, {
-        onConflict: 'nis, mata_pelajaran, periode, tahun_ajaran, kategori'
-      });
+        nilai: -1,
+        catatan: 'BOYONG',
+        urutan: idx + 1
+      }));
+      const res = await supabase.from('nilai_tamrin').upsert(payload, { onConflict: 'nis, mata_pelajaran, periode, tahun_ajaran, kategori' });
+      error = res.error;
+    } else {
+      const res = await supabase
+        .from('nilai_tamrin')
+        .upsert({
+          nis: selectedNis,
+          nama_siswi: selectedSiswi?.nama_siswi,
+          mata_pelajaran: mapel,
+          periode: periode,
+          tahun_ajaran: globalTahunAjaran,
+          kategori: 'Tamrin',
+          nilai: isAbsent ? -1 : nilai,
+          catatan: isAbsent ? catatan.trim() : null
+        }, {
+          onConflict: 'nis, mata_pelajaran, periode, tahun_ajaran, kategori'
+        });
+      error = res.error;
+    }
 
     setIsSubmitting(false);
 
@@ -295,13 +315,13 @@ export default function InputTab() {
                 placeholder={selectedNis ? "Pilih mapel..." : "Pilih siswi terlebih dahulu..."}
                 title="Pilih Mata Pelajaran"
                 icon={BookOpen}
-                disabled={!selectedNis}
+                disabled={!selectedNis || (isAbsent && catatan === 'BOYONG')}
               />
             </div>
           </div>
 
           {/* Absent Option Checkbox */}
-          <div className={cn("bg-white rounded-3xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-blue-50/50 transition-opacity", (!mapel || !selectedNis) && "opacity-50 pointer-events-none")}>
+          <div className={cn("bg-white rounded-3xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-blue-50/50 transition-opacity", !selectedNis && "opacity-50 pointer-events-none")}>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input 
                 type="checkbox"
@@ -309,30 +329,33 @@ export default function InputTab() {
                 onChange={(e) => {
                   setIsAbsent(e.target.checked);
                   if (e.target.checked) {
-                    setNilai(null); // Reset nilai if marked absent
+                    setNilai(null);
+                    if (!catatan) setCatatan('SAKIT'); // Default
                   } else {
-                    setCatatan(''); // Reset catatan if marked present
+                    setCatatan('');
                   }
                 }}
-                disabled={!mapel || !selectedNis}
+                disabled={!selectedNis}
                 className="w-5 h-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500/50 cursor-pointer"
               />
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-slate-700">Siswi tidak masuk / Berikan catatan khusus</span>
-                <span className="text-xs text-slate-500">Gunakan ini jika siswi berhalangan hadir atau memerlukan keterangan khusus.</span>
+                <span className="text-xs text-slate-500">Pilih ini untuk memberikan keterangan Sakit, Izin, atau Boyong.</span>
               </div>
             </label>
 
             {isAbsent && (
               <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Keterangan / Catatan Masuk (misal: Sakit, Izin, Susulan, dll.)</label>
-                <input 
-                  type="text"
-                  placeholder="Masukkan alasan tidak masuk atau catatan lainnya..."
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Keterangan Khusus</label>
+                <select
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-shadow"
-                />
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-shadow appearance-none"
+                >
+                  <option value="SAKIT">SAKIT</option>
+                  <option value="IZIN">IZIN</option>
+                  <option value="BOYONG">BOYONG (Otomatis terisi untuk semua pelajaran)</option>
+                </select>
               </div>
             )}
           </div>
@@ -340,7 +363,7 @@ export default function InputTab() {
 
         {/* Right Column - Nilai (Step 3 + Action) */}
         <div className="md:col-span-7 space-y-4">
-          <NilaiGrid nilai={nilai} setNilai={setNilai} disabled={!mapel || !selectedNis || isAbsent} />
+          <NilaiGrid nilai={nilai} setNilai={setNilai} disabled={!selectedNis || isAbsent || (!mapel && catatan !== 'BOYONG')} />
 
           {/* Action Area */}
           <div className="pt-2 pb-6">
@@ -350,8 +373,8 @@ export default function InputTab() {
                 isSubmitting || 
                 !periode || 
                 !selectedNis || 
-                !mapel || 
-                (isAbsent ? (!catatan || catatan.trim() === '') : (nilai === null))
+                (!mapel && catatan !== 'BOYONG') || 
+                (isAbsent ? !catatan : (nilai === null))
               }
               className="w-full bg-blue-600 text-white font-bold text-lg rounded-3xl py-4 flex items-center justify-center gap-2 shadow-[0_8px_20px_-6px_rgba(37,99,235,0.5)] disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98]"
             >

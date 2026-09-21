@@ -266,15 +266,16 @@ export default function RecapTab() {
       });
       return { type: 'muhafadzoh', total: siswiBagian.length, jayyid, mutawassith, rodi, belum };
     }
+    const targetMapelCount = mapels.length > 0 ? mapels.length : uniqueMapels.length;
     const lengkap = [], belumLengkap = [], belumDiinput = [];
     siswiBagian.forEach(student => {
       const record = groupedData.find(g => g.nis === student.nis);
       if (!record || record.count === 0) belumDiinput.push(student);
-      else if (record.count < uniqueMapels.length) belumLengkap.push({ ...student, count: record.count, totalMapel: uniqueMapels.length });
+      else if (record.count < targetMapelCount) belumLengkap.push({ ...student, count: record.count, totalMapel: targetMapelCount });
       else lengkap.push(student);
     });
-    return { type: 'default', total: siswiBagian.length, lengkap, belumLengkap, belumDiinput };
-  }, [selectedBagian, resolvedSiswi.list, groupedData, uniqueMapels, selectedKategori]);
+    return { type: 'default', total: siswiBagian.length, lengkap, belumLengkap, belumDiinput, targetMapelCount };
+  }, [selectedBagian, resolvedSiswi.list, groupedData, uniqueMapels, mapels, selectedKategori]);
 
   const overallStats = useMemo(() => {
     if (selectedBagian) return null;
@@ -299,15 +300,16 @@ export default function RecapTab() {
       });
       return { type: 'muhafadzoh', total: resolvedSiswi.list.length, jayyid, mutawassith, rodi, belum };
     }
+    const targetMapelCount = mapels.length > 0 ? mapels.length : uniqueMapels.length;
     const lengkap = [], belumLengkap = [], belumDiinput = [];
     resolvedSiswi.list.forEach(student => {
       const record = allGroups[student.nis];
       if (!record || record.count === 0) belumDiinput.push(student);
-      else if (record.count < uniqueMapels.length) belumLengkap.push({ ...student, count: record.count, totalMapel: uniqueMapels.length });
+      else if (record.count < targetMapelCount) belumLengkap.push({ ...student, count: record.count, totalMapel: targetMapelCount });
       else lengkap.push(student);
     });
-    return { type: 'default', total: resolvedSiswi.list.length, lengkap, belumLengkap, belumDiinput };
-  }, [data, resolvedSiswi.list, uniqueMapels, selectedBagian, selectedKategori]);
+    return { type: 'default', total: resolvedSiswi.list.length, lengkap, belumLengkap, belumDiinput, targetMapelCount };
+  }, [data, resolvedSiswi.list, uniqueMapels, mapels, selectedBagian, selectedKategori]);
 
   const toggleExpand = (nis) => {
     setExpandedNis(prev => prev === nis ? null : nis);

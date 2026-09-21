@@ -347,15 +347,43 @@ export default function InputTab() {
             {isAbsent && (
               <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">Keterangan Khusus</label>
-                <select
-                  value={catatan}
-                  onChange={(e) => setCatatan(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-shadow appearance-none"
-                >
-                  <option value="SAKIT">SAKIT</option>
-                  <option value="IZIN">IZIN</option>
-                  <option value="BOYONG">BOYONG (Otomatis terisi untuk semua pelajaran)</option>
-                </select>
+                <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button 
+                      type="button"
+                      onClick={() => setCatatan('SAKIT')}
+                      className={cn(
+                        "py-3 px-4 rounded-xl text-sm font-semibold transition-all border",
+                        catatan === 'SAKIT' ? "bg-amber-50 border-amber-400 text-amber-700 shadow-sm ring-1 ring-amber-400/50" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      🤒 SAKIT
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setCatatan('IZIN')}
+                      className={cn(
+                        "py-3 px-4 rounded-xl text-sm font-semibold transition-all border",
+                        catatan === 'IZIN' ? "bg-blue-50 border-blue-400 text-blue-700 shadow-sm ring-1 ring-blue-400/50" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      📝 IZIN
+                    </button>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setCatatan('BOYONG')}
+                    className={cn(
+                      "py-3 px-4 rounded-xl text-sm font-semibold transition-all border flex flex-col items-center justify-center gap-1",
+                      catatan === 'BOYONG' ? "bg-red-50 border-red-400 text-red-700 shadow-sm ring-1 ring-red-400/50" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    )}
+                  >
+                    <span>🎒 BOYONG</span>
+                    <span className={cn("text-[10px] font-medium", catatan === 'BOYONG' ? "text-red-600/80" : "text-slate-400")}>
+                      (Otomatis terisi lengkap untuk SEMUA pelajaran)
+                    </span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

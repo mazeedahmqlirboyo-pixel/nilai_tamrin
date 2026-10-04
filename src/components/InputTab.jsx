@@ -160,7 +160,7 @@ export default function InputTab() {
           tahun_ajaran: globalTahunAjaran,
           kategori: 'Tamrin',
           nilai: isAbsent ? -1 : nilai,
-          catatan: isAbsent ? catatan.trim() : null
+          catatan: isAbsent ? (catatan ? catatan.trim() : null) : null
         }, {
           onConflict: 'nis, mata_pelajaran, periode, tahun_ajaran, kategori'
         });
@@ -171,16 +171,16 @@ export default function InputTab() {
 
     if (error) {
       console.error(error);
-      setNotification({ type: 'error', message: `Gagal menyimpan: ${error.message}` });
+      setNotification({ type: 'error', message: `Gagal menyimpan: ${error?.message || 'Error tidak diketahui'}` });
       setTimeout(() => setNotification(null), 4000);
     } else {
-      setGradedSiswis(prev => Array.from(new Set([...prev, selectedNis])));
-      setGradedMapelsForSiswi(prev => Array.from(new Set([...prev, mapel])));
+      setGradedSiswis(prev => Array.from(new Set([...(prev || []), selectedNis])));
+      setGradedMapelsForSiswi(prev => Array.from(new Set([...(prev || []), mapel])));
       setNilai(null);
       setIsAbsent(false);
       setCatatan('');
       setShowSuccessModal(true);
-      setTimeout(() => setShowSuccessModal(false), 500);
+      setTimeout(() => setShowSuccessModal(false), 1000); // Increased timeout slightly for better UX
     }
   };
 

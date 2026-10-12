@@ -96,7 +96,7 @@ export default function PremiumSelect({
                         isActive ? activeColorClass : (opt.isDanger ? "text-red-500" : "text-slate-600")
                       )}>
                         {opt.label}
-                        {opt.isDanger && !isActive && <span className="text-[9px] font-bold tracking-wide bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md ml-2 relative -top-0.5 italic">Sudah diisi</span>}
+                        {opt.isDanger && <span className="text-[9px] font-bold tracking-wide bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md ml-2 relative -top-0.5 italic">Sudah diisi</span>}
                       </span>
                     </div>
                     {isActive && <CheckCircle2 className="w-5 h-5 text-blue-500 animate-in zoom-in duration-300" />}

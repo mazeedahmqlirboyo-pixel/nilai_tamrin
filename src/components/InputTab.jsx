@@ -136,19 +136,49 @@ export default function InputTab() {
     let error = null;
 
     if (isAbsent && catatan === 'BOYONG') {
-      const payload = mapels.map((m, idx) => ({
-        nis: selectedNis,
-        nama_siswi: selectedSiswi?.nama_siswi,
-        mata_pelajaran: m,
-        periode: periode,
-        tahun_ajaran: globalTahunAjaran,
-        kategori: 'Tamrin',
-        nilai: -1,
-        catatan: 'BOYONG',
-        urutan: idx + 1
-      }));
-      const res = await supabase.from('nilai_tamrin').upsert(payload, { onConflict: 'nis, mata_pelajaran, periode, tahun_ajaran, kategori' });
-      error = res.error;
+      try {
+        // 1. Ambil data nilai yang SUDAH DIISI sebelumnya untuk siswi ini di periode & tahun ajaran aktif
+        const { data: existingRecords, error: fetchErr } = await supabase
+          .from('nilai_tamrin')
+          .select('mata_pelajaran')
+          .eq('nis', selectedNis)
+          .eq('periode', periode)
+          .eq('tahun_ajaran', globalTahunAjaran)
+          .eq('kategori', 'Tamrin');
+
+        if (fetchErr) {
+          error = fetchErr;
+        } else {
+          const existingMapelSet = new Set((existingRecords || []).map(r => r.mata_pelajaran));
+
+          // 2. Hanya masukkan mapel yang BELUM diisi nilai (supaya nilai yang sudah ada di tengah-tengah TETAP AMAN / tidak tertimpa)
+          const missingMapels = mapels.filter(m => !existingMapelSet.has(m));
+
+          if (missingMapels.length > 0) {
+            const payload = missingMapels.map(m => {
+              const idx = mapels.indexOf(m);
+              return {
+                nis: selectedNis,
+                nama_siswi: selectedSiswi?.nama_siswi,
+                mata_pelajaran: m,
+                periode: periode,
+                tahun_ajaran: globalTahunAjaran,
+                kategori: 'Tamrin',
+                nilai: -1,
+                catatan: 'BOYONG',
+                urutan: idx !== -1 ? idx + 1 : 999
+              };
+            });
+
+            const res = await supabase
+              .from('nilai_tamrin')
+              .upsert(payload, { onConflict: 'nis, mata_pelajaran, periode, tahun_ajaran, kategori' });
+            error = res.error;
+          }
+        }
+      } catch (err) {
+        error = err;
+      }
     } else {
       const res = await supabase
         .from('nilai_tamrin')
@@ -175,7 +205,14 @@ export default function InputTab() {
       setTimeout(() => setNotification(null), 4000);
     } else {
       setGradedSiswis(prev => Array.from(new Set([...(prev || []), selectedNis])));
-      setGradedMapelsForSiswi(prev => Array.from(new Set([...(prev || []), mapel])));
+      
+      // Jika BOYONG, SEMUA mata pelajaran siswi ini sekarang sudah terisi (baik nilai asli maupun Boyong)
+      if (isAbsent && catatan === 'BOYONG') {
+        setGradedMapelsForSiswi([...mapels]);
+      } else {
+        setGradedMapelsForSiswi(prev => Array.from(new Set([...(prev || []), mapel])));
+      }
+
       setNilai(null);
       setIsAbsent(false);
       setCatatan('');

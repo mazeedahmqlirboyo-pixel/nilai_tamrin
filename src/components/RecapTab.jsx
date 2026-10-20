@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { CalendarDays, Book, Loader2, AlertCircle, ChevronDown, GraduationCap, Edit2, Check, X, Building, Download, Upload, Users, CheckCircle, Clock, XCircle, Search, Calendar } from 'lucide-react';
+import { CalendarDays, Book, Loader2, AlertCircle, ChevronDown, GraduationCap, Edit2, Check, X, Building, Download, Upload, Users, CheckCircle, Clock, XCircle, Search, Calendar, MessageCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useSiswi } from '../contexts/SiswiContext';
 import AdminModal from './AdminModal';
+import WhatsAppShareModal from './WhatsAppShareModal';
 import PremiumSelect from './PremiumSelect';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -50,6 +51,7 @@ export default function RecapTab() {
   const [editingRow, setEditingRow] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [detailModal, setDetailModal] = useState({ isOpen: false, type: '', data: [] });
 
   const fetchIdRef = useRef(0);
@@ -811,6 +813,23 @@ export default function RecapTab() {
         closeAdminModal={() => setShowAdminModal(false)} 
         fetchData={fetchData} 
         uniqueMapels={uniqueMapels} 
+        onOpenWhatsAppShare={() => setShowWhatsAppModal(true)}
+      />
+
+      {/* WHATSAPP SHARE MODAL */}
+      <WhatsAppShareModal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        kategori={selectedKategori}
+        tahunAjaran={activeTahun}
+        periode={activePeriode}
+        currentBagian={selectedBagian}
+        bagianList={localUniqueBagian}
+        resolvedSiswi={resolvedSiswi}
+        groupedData={groupedData}
+        data={data}
+        mapels={mapels}
+        uniqueMapels={uniqueMapels}
       />
 
       {/* DETAIL MODAL OVERLAY */}

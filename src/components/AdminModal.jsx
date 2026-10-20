@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import { Lock, X, AlertCircle, Loader2, Upload, Trash2, Book } from 'lucide-react';
+import { Lock, X, AlertCircle, Loader2, Upload, Trash2, Book, MessageCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useSiswi } from '../contexts/SiswiContext';
 import { TAHUN_AJARANS } from '../lib/years';
 
-export default function AdminModal({ showAdminModal, closeAdminModal, fetchData, uniqueMapels }) {
+export default function AdminModal({ showAdminModal, closeAdminModal, fetchData, uniqueMapels, onOpenWhatsAppShare }) {
   const { 
     siswiList, 
     uniqueBagian, 
@@ -707,6 +707,25 @@ export default function AdminModal({ showAdminModal, closeAdminModal, fetchData,
         ) : (
           <div className="space-y-5 overflow-y-auto flex-1 pr-1 custom-scrollbar pb-2">
             
+            {/* Rekap WhatsApp */}
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-4 border border-emerald-200 text-center relative overflow-hidden group shadow-sm">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto mb-2 shadow-sm">
+                <MessageCircle className="w-5 h-5" />
+              </div>
+              <h4 className="font-bold text-slate-800 text-sm">Rekap Status WhatsApp</h4>
+              <p className="text-xs text-slate-500 mt-1 mb-3">Sebar status input nilai (Lengkap / Belum Lengkap / Belum Input) ke grup WA.</p>
+              
+              <button 
+                type="button"
+                onClick={() => {
+                  if (onOpenWhatsAppShare) onOpenWhatsAppShare();
+                }}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm py-2.5 px-4 rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" /> Buka Rekap WA
+              </button>
+            </div>
+
             {/* Master Siswi Upload */}
             <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 text-center relative overflow-hidden group">
               {adminLoading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-[1px] z-10"><Loader2 className="w-6 h-6 text-blue-600 animate-spin" /></div>}
